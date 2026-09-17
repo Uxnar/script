@@ -12,7 +12,7 @@
         header { padding: 1.5rem 2rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #e1e4e8; background: #fff; }
         .logo { width: 32px; height: 32px; fill: #24292e; }
         .logo-text { font-size: 1.1rem; font-weight: 600; flex: 1; }
-        .header-btn { text-decoration: none; color: #24292e; font-size: 0.9rem; font-weight: 600; border: 1px solid #e1e4e8; padding: 0.4rem 0.8rem; border-radius: 6px; background: #fafbfc; transition: all 0.2s; }
+        .header-btn { text-decoration: none; color: #24292e; font-size: 0.9rem; font-weight: 600; border: 1px solid #e1e4e8; padding: 0.4rem 0.8rem; border-radius: 6px; background: #fafbfc; transition: all 0.2s; cursor: pointer; }
         .header-btn:hover { background: #f3f4f6; }
         main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 4rem 2rem; }
         .hero { text-align: left; width: 100%; max-width: 800px; background: #fff; padding: 2rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -32,6 +32,15 @@
         footer a:hover { text-decoration: underline; }
         .footer-divider { margin: 0 0.8rem; color: #e1e4e8; }
 
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; padding: 2rem; border-radius: 8px; width: 90%; max-width: 500px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: modalFadeIn 0.2s ease-out; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 1.5rem; cursor: pointer; color: #586069; line-height: 1; }
+        .close-btn:hover { color: #24292e; }
+        .modal-body p { font-weight: 600; margin: 1rem 0 0.5rem 0; }
+        .modal-body ul { margin-left: 1.5rem; color: #586069; font-size: 0.95rem; line-height: 1.6; }
+        .modal-content h2 { font-size: 1.5rem; margin-bottom: 1rem; color: #24292e; }
+
         @media (prefers-color-scheme: dark) {
             body { background: #0d1117; color: #c9d1d9; }
             header { background: #161b22; border-bottom: 1px solid #30363d; }
@@ -50,6 +59,12 @@
             footer { background: #161b22; border-top: 1px solid #30363d; color: #8b949e; }
             footer a { color: #58a6ff; }
             .footer-divider { color: #30363d; }
+            .modal { background: rgba(0,0,0,0.6); }
+            .modal-content { background: #161b22; border: 1px solid #30363d; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
+            .modal-content h2 { color: #c9d1d9; }
+            .close-btn { color: #8b949e; }
+            .close-btn:hover { color: #c9d1d9; }
+            .modal-body ul { color: #8b949e; }
         }
     </style>
 </head>
@@ -64,6 +79,7 @@
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
         </svg>
         <span class="logo-text">GitHub Pages</span>
+        <button id="info-btn" class="header-btn">使用说明</button>
         <a href="https://github.com/Uxnar/script" target="_blank" class="header-btn">项目地址</a>
     </header>
     
@@ -76,8 +92,29 @@
     </main>
     
     <footer>
-        <p>安全加速支持由 <a href="https://pages.github.com/" target="_blank">GitHub Pages</a> 提供 <span class="footer-divider">|</span> 技术支持由 <a href="https://gemini.google.com/" target="_blank">Gemini</a> 提供</p>
+        <p>由 <a href="https://pages.github.com/" target="_blank">GitHub Pages</a> 提供安全加速支持 <span class="footer-divider">|</span> 由 <a href="https://gemini.google.com/" target="_blank">Gemini</a> 提供技术支持</p>
     </footer>
+
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>使用说明</h2>
+            <div class="modal-body">
+                <p>硬件与系统要求：</p>
+                <ul>
+                    <li>运行内存大于等于 100M</li>
+                    <li>存储空间大于等于 1G</li>
+                    <li>使用 Alpine3.20+、Debian11+、Ubuntu18+ 系统</li>
+                </ul>
+                <p>其他注意事项：</p>
+                <ul>
+                    <li>请务必使用 <code>root</code> 用户执行安装命令。</li>
+                    <li>执行前请确保服务器具备正常的互联网连接(能访问GitHub)。</li>
+                    <li>如遇权限问题，请在命令前添加 <code>sudo</code> 或切换至特权用户。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <script>
         const scripts = [
@@ -148,6 +185,14 @@
 
             scriptListContainer.appendChild(itemDiv);
         });
+
+        const modal = document.getElementById('info-modal');
+        const infoBtn = document.getElementById('info-btn');
+        const closeBtn = document.querySelector('.close-btn');
+
+        infoBtn.onclick = () => { modal.style.display = 'flex'; };
+        closeBtn.onclick = () => { modal.style.display = 'none'; };
+        window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
     </script>
 </body>
 </html>
