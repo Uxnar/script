@@ -253,12 +253,18 @@ get_public_ipv6() {
         "https://api.ipify.org" \
         "https://ipinfo.io/ip" \
         "https://ifconfig.me"; do
-        ip=$(curl -6 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
+        ip=$(curl -6 -s --max-time 8 "$url" 2>/dev/null | tr -d '[:space:]' || true)
         # 只用「有没有冒号」这种最朴素的判断区分协议族,能拿到就等于这条 IPv6 通了
         case "$ip" in
             *:*) echo "$ip"; return 0 ;;
         esac
     done
+
+    # 全部失败再给一次机会:隧道 / NAT66 环境首次握手可能很慢(实测有的要 6s 以上)
+    ip=$(curl -6 -s --max-time 20 "https://ip.sb" 2>/dev/null | tr -d '[:space:]' || true)
+    case "$ip" in
+        *:*) echo "$ip"; return 0 ;;
+    esac
     return 1
 }
 
@@ -401,6 +407,7 @@ if [ -z "$CUSTOM_IP" ]; then
 
     if [ -n "$DETECTED_V6" ]; then
         info "检测到可用公网 IPv6: $DETECTED_V6 (来源: $V6_SOURCE)"
+
         # 只有网卡地址、没有通过公网回显验证时给出提醒
         if [ "$V6_SOURCE" = "网卡地址" ]; then
             if has_ipv6_default_route; then
