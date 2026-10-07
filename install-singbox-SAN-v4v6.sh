@@ -6,7 +6,7 @@ set -euo pipefail
 #   2) 支持 IPv4 / IPv6 双栈:自动检测本机 IPv6,若用户使用默认出口 IP 则询问是否一并创建 v6 节点
 # 2
 # 脚本版本号
-SCRIPT_VERSION="v2610071840"
+SCRIPT_VERSION="v2610071845"
 export SCRIPT_VERSION
 
 # -----------------------
@@ -102,8 +102,6 @@ install_deps() {
     info "依赖安装完成"
     info "当前脚本版本: $SCRIPT_VERSION"
 }
-
-install_deps
 
 # -----------------------
 # 工具函数
@@ -296,10 +294,10 @@ diagnose_ipv6() {
 }
 
 # 综合判定:外部回显优先(公网真实可见),其次本机网卡地址,ULA/内网地址一律忽略
+# 注意:这个函数只能用 stdout 输出结果本身,不能往 stdout 打任何提示
+#      (调用方是 $(...),混进提示文案会导致结果解析失败)
 resolve_ipv6() {
     local ext="" loc=""
-
-    info "正在检测 IPv6 可用性..."
 
     ext="$(get_public_ipv6 || true)"
     if [ -n "$ext" ]; then
@@ -315,6 +313,19 @@ resolve_ipv6() {
 
     return 1
 }
+
+# -----------------------
+# 安装依赖 + IPv6 预探测
+install_deps
+
+# 依赖一装完就先把 IPv6 探测跑掉,避免后面边交互边等网络
+info "正在检测本机 IPv6 可用性..."
+PRECHECK_V6_RESULT="$(resolve_ipv6 || true)"
+case "$PRECHECK_V6_RESULT" in
+    PUBLIC\|*) info "IPv6 预探测完成: 公网回显地址 ${PRECHECK_V6_RESULT#PUBLIC|}" ;;
+    LOCAL\|*)  info "IPv6 预探测完成: 本机网卡地址 ${PRECHECK_V6_RESULT#LOCAL|}" ;;
+    *)         PRECHECK_V6_RESULT=""; info "IPv6 预探测完成: 未发现可用公网 IPv6"; diagnose_ipv6 ;;
+esac
 
 # -----------------------
 # 配置节点名称后缀
@@ -403,7 +414,7 @@ V6_ADDR=""
 if [ -z "$CUSTOM_IP" ]; then
     DETECTED_V6=""
     V6_SOURCE=""
-    V6_RESULT="$(resolve_ipv6 || true)"
+    V6_RESULT="${PRECHECK_V6_RESULT:-}"
     case "$V6_RESULT" in
         PUBLIC\|*) V6_SOURCE="公网回显"; DETECTED_V6="${V6_RESULT#PUBLIC|}" ;;
         LOCAL\|*)  V6_SOURCE="网卡地址"; DETECTED_V6="${V6_RESULT#LOCAL|}" ;;
@@ -438,7 +449,6 @@ if [ -z "$CUSTOM_IP" ]; then
             info "跳过 IPv6 节点,仅创建 IPv4 节点"
         fi
     else
-        diagnose_ipv6
         info "未检测到可用的公网 IPv6,仅创建 IPv4 节点"
     fi
 else
