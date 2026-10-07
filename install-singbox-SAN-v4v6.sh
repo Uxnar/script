@@ -5,6 +5,10 @@ set -euo pipefail
 #   1) 隐藏 SS / TUIC 协议选项,仅保留 Hysteria2 (HY2) 与 VLESS Reality
 #   2) 支持 IPv4 / IPv6 双栈:自动检测本机 IPv6,若用户使用默认出口 IP 则询问是否一并创建 v6 节点
 # 2
+# 脚本版本号
+SCRIPT_VERSION="v2610071840"
+export SCRIPT_VERSION
+
 # -----------------------
 # 彩色输出函数
 info() { echo -e "\033[1;34m[INFO]\033[0m $*"; }
@@ -96,6 +100,7 @@ install_deps() {
     esac
 
     info "依赖安装完成"
+    info "当前脚本版本: $SCRIPT_VERSION"
 }
 
 install_deps
