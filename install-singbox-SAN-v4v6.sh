@@ -6,7 +6,7 @@ set -euo pipefail
 #   2) 支持 IPv4 / IPv6 双栈:自动检测本机 IPv6,若用户使用默认出口 IP 则询问是否一并创建 v6 节点
 # 2
 # 脚本版本号
-SCRIPT_VERSION="v2610071845"
+SCRIPT_VERSION="v2610071852"
 export SCRIPT_VERSION
 
 # -----------------------
@@ -520,14 +520,29 @@ install_singbox() {
         fi
     fi
 
-    SB_VER=$(curl -s "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+    # 查版本号:GitHub API 在部分地区可能很慢或不通,必须设超时 + 重试 + 可换镜像
+    # 需要时可以这样跑: SB_MIRROR=https://ghfast.top/ bash 本脚本
+    local try=1 SB_VER=""
+    info "正在查询 sing-box 最新版本..."
+    while [ "$try" -le 3 ]; do
+        SB_VER=$(curl -s --connect-timeout 10 --max-time 20 \
+            "https://api.github.com/repos/SagerNet/sing-box/releases/latest" \
+            | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/' || true)
+        [ -n "$SB_VER" ] && break
+        warn "第 $try 次获取版本号失败,2 秒后重试..."
+        try=$((try + 1))
+        sleep 2
+    done
+
     if [ -z "$SB_VER" ]; then
-        err "获取最新版本号失败，请检查网络"
+        err "获取最新版本号失败(已重试 3 次):GitHub API 访问不通"
+        err "可换镜像后重跑,例如: SB_MIRROR=https://ghfast.top/ bash 本脚本"
         exit 1
     fi
+    info "最新版本: v${SB_VER}"
 
     SB_FILE="sing-box-${SB_VER}-linux-${ARCH}.tar.gz"
-    SB_URL="https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/${SB_FILE}"
+    SB_URL="${SB_MIRROR:-}https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/${SB_FILE}"
 
     # 隔离下载目录和解压目录
     DOWN_DIR="/root/sb_down"
@@ -536,8 +551,14 @@ install_singbox() {
     mkdir -p "$DOWN_DIR" "$EXT_DIR"
 
     info "正在下载 sing-box v${SB_VER} ($ARCH)..."
-    if ! wget -qO "$DOWN_DIR/$SB_FILE" "$SB_URL"; then
-        curl -L -o "$DOWN_DIR/$SB_FILE" "$SB_URL" || { err "下载失败"; exit 1; }
+    info "下载地址: $SB_URL"
+    if ! curl -fL --connect-timeout 15 --max-time 300 -o "$DOWN_DIR/$SB_FILE" "$SB_URL"; then
+        warn "curl 下载失败,改用 wget 再试一次"
+        wget -qO "$DOWN_DIR/$SB_FILE" "$SB_URL" || {
+            err "下载失败: $SB_URL"
+            err "可换镜像后重跑,例如: SB_MIRROR=https://ghfast.top/ bash 本脚本"
+            exit 1
+        }
     fi
 
     info "解压并部署..."
@@ -1355,15 +1376,24 @@ case "$OS" in
 esac
 
 info "安装 sing-box..."
-SB_VER=$(curl -s "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+SB_VER=$(curl -s --connect-timeout 10 --max-time 20 "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+if [ -z "$SB_VER" ]; then
+    err "获取最新版本失败"
+    exit 1
+fi
 SB_FILE="sing-box-${SB_VER}-linux-${ARCH}.tar.gz"
+SB_URL="${SB_MIRROR:-}https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/${SB_FILE}"
 
 DOWN_DIR="/root/sb_down_relay"
 EXT_DIR="/root/sb_ext_relay"
 rm -rf "$DOWN_DIR" "$EXT_DIR"
 mkdir -p "$DOWN_DIR" "$EXT_DIR"
 
-wget -qO "$DOWN_DIR/${SB_FILE}" "https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/${SB_FILE}"
+info "正在下载 sing-box v${SB_VER}..."
+if ! curl -fL --connect-timeout 15 --max-time 300 -o "$DOWN_DIR/${SB_FILE}" "$SB_URL"; then
+    warn "curl 下载失败,改用 wget 再试一次"
+    wget -qO "$DOWN_DIR/${SB_FILE}" "$SB_URL" || { err "下载失败"; exit 1; }
+fi
 tar -xzf "$DOWN_DIR/${SB_FILE}" -C "$EXT_DIR" --strip-components 1
 mv "$EXT_DIR/sing-box" /usr/bin/sing-box
 chmod +x /usr/bin/sing-box
@@ -1481,13 +1511,24 @@ RELAY_EOF
 
 action_update() {
     info "开始更新 sing-box (二进制包)..."
-    SB_VER=$(curl -s "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | jq -r '.tag_name // empty' | sed 's/v//')
+    local try=1 SB_VER=""
+    info "正在查询 sing-box 最新版本..."
+    while [ "$try" -le 3 ]; do
+        SB_VER=$(curl -s --connect-timeout 10 --max-time 20 \
+            "https://api.github.com/repos/SagerNet/sing-box/releases/latest" \
+            | jq -r '.tag_name // empty' | sed 's/v//' || true)
+        [ -n "$SB_VER" ] && break
+        warn "第 $try 次获取版本号失败,2 秒后重试..."
+        try=$((try + 1))
+        sleep 2
+    done
     if [ -z "$SB_VER" ]; then
-        err "获取最新版本号失败"
+        err "获取最新版本号失败(已重试 3 次)"
+        err "可换镜像后重试,例如: SB_MIRROR=https://ghfast.top/ sb"
         return 1
     fi
     SB_FILE="sing-box-${SB_VER}-linux-${ARCH}.tar.gz"
-    SB_URL="https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/${SB_FILE}"
+    SB_URL="${SB_MIRROR:-}https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/${SB_FILE}"
 
     DOWN_DIR="/root/sb_down_up"
     EXT_DIR="/root/sb_ext_up"
@@ -1495,8 +1536,14 @@ action_update() {
     mkdir -p "$DOWN_DIR" "$EXT_DIR"
     
     info "正在下载: $SB_FILE"
-    if ! wget -qO "$DOWN_DIR/$SB_FILE" "$SB_URL"; then
-        curl -L -o "$DOWN_DIR/$SB_FILE" "$SB_URL" || { err "下载失败"; return 1; }
+    info "下载地址: $SB_URL"
+    if ! curl -fL --connect-timeout 15 --max-time 300 -o "$DOWN_DIR/$SB_FILE" "$SB_URL"; then
+        warn "curl 下载失败,改用 wget 再试一次"
+        wget -qO "$DOWN_DIR/$SB_FILE" "$SB_URL" || {
+            err "下载失败: $SB_URL"
+            err "可换镜像后重试,例如: SB_MIRROR=https://ghfast.top/ sb"
+            return 1
+        }
     fi
 
     service_stop
