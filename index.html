@@ -3,119 +3,309 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Pages - 脚本安装</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2324292e'><path d='M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z'/></svg>">
+    <title>SingBox · 一键部署</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234f46e5'><path d='M8 5v14l11-7z'/></svg>">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -ms-overflow-style: none; scrollbar-width: none; }
-        ::-webkit-scrollbar { display: none; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto SAN', SAN-serif; background: #f6f8fa; min-height: 100vh; display: flex; flex-direction: column; color: #24292e; }
-        header { padding: 1.5rem 2rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #e1e4e8; background: #fff; }
-        .logo { width: 32px; height: 32px; fill: #24292e; }
-        .logo-text { font-size: 1.1rem; font-weight: 600; flex: 1; }
-        .header-btn { text-decoration: none; color: #24292e; font-size: 0.9rem; font-weight: 600; border: 1px solid #e1e4e8; padding: 0.4rem 0.8rem; border-radius: 6px; background: #fafbfc; transition: all 0.2s; cursor: pointer; }
-        .header-btn:hover { background: #f3f4f6; }
-        main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 4rem 2rem; }
-        .hero { text-align: left; width: 100%; max-width: 800px; background: #fff; padding: 2rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h1 { font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem; text-align: center; }
-        .script-item { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaecef; }
-        .script-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .script-desc { font-weight: 600; margin-bottom: 0.3rem; font-size: 1.1rem; color: #0366d6; line-height: 1.5; }
-        .script-title { font-size: 0.9rem; color: #586069; margin-bottom: 0.8rem; }
-        .recommend-badge { display: inline-block; margin-left: 0.5rem; padding: 0.1rem 0.45rem; font-size: 0.72rem; font-weight: 600; line-height: 1.5; color: #fff; background: #d73a49; border: 1px solid #a51e2c; border-radius: 4px; white-space: nowrap; vertical-align: 2px; letter-spacing: 0.3px; }
-        .command-box { display: flex; background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; overflow: hidden; align-items: stretch; }
-        .command-text { flex: 1; padding: 1rem; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; color: #24292e; overflow-x: auto; white-space: nowrap; }
-        .copy-btn { background: #fafbfc; border: none; border-left: 1px solid #e1e4e8; padding: 0 1.5rem; cursor: pointer; font-weight: 600; color: #24292e; transition: all 0.2s; white-space: nowrap; }
-        .copy-btn:hover { background: #f3f4f6; }
-        .copy-btn:active { background: #edeff2; }
-        .copy-btn.copied { background: #28a745; color: white; border-color: #28a745; }
-        footer { padding: 1.5rem 2rem; text-align: center; border-top: 1px solid #e1e4e8; color: #586069; font-size: 0.85rem; background: #fff; line-height: 1.8; }
-        footer a { color: #0366d6; text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-        .footer-divider { margin: 0 0.8rem; color: #e1e4e8; }
-
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: #fff; padding: 2rem; border-radius: 8px; width: 90%; max-width: 500px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: modalFadeIn 0.2s ease-out; }
-        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 1.5rem; cursor: pointer; color: #586069; line-height: 1; }
-        .close-btn:hover { color: #24292e; }
-        .modal-body p { font-weight: 600; margin: 1rem 0 0.5rem 0; }
-        .modal-body ul { margin-left: 1.5rem; color: #586069; font-size: 0.95rem; line-height: 1.6; }
-        .modal-content h2 { font-size: 1.5rem; margin-bottom: 1rem; color: #24292e; }
+        :root {
+            --bg: #f5f5f7;
+            --surface: #ffffff;
+            --surface-2: #fafafb;
+            --border: #e6e6ea;
+            --border-2: #d4d4da;
+            --text: #14151a;
+            --muted: #6b7280;
+            --accent: #4f46e5;
+            --accent-soft: #eef0ff;
+            --term-bg: #12141a;
+            --term-bar: #1b1e26;
+            --term-text: #d8dae3;
+            --term-muted: #6f7482;
+            --dot-1: #ff5f57;
+            --dot-2: #febc2e;
+            --dot-3: #28c840;
+            --rec-bg: #e11d48;
+            --rec-border: #be123c;
+            --shadow: 0 1px 2px rgba(16,17,22,0.04), 0 6px 20px rgba(16,17,22,0.05);
+            --shadow-2: 0 2px 4px rgba(16,17,22,0.06), 0 14px 34px rgba(16,17,22,0.09);
+            --radius: 16px;
+        }
 
         @media (prefers-color-scheme: dark) {
-            body { background: #0d1117; color: #c9d1d9; }
-            header { background: #161b22; border-bottom: 1px solid #30363d; }
-            .logo { fill: #c9d1d9; }
-            .header-btn { color: #c9d1d9; border: 1px solid #30363d; background: #21262d; }
-            .header-btn:hover { background: #30363d; }
-            .hero { background: #161b22; box-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-            .script-item { border-bottom: 1px solid #21262d; }
-            .script-desc { color: #58a6ff; }
-            .script-title { color: #8b949e; }
-            .recommend-badge { background: #da3633; border: 1px solid #ff7b72; color: #fff; }
-            .command-box { background: #0d1117; border: 1px solid #30363d; }
-            .command-text { color: #c9d1d9; }
-            .copy-btn { background: #21262d; border-left: 1px solid #30363d; color: #c9d1d9; }
-            .copy-btn:hover { background: #30363d; }
-            .copy-btn:active { background: #21262d; }
-            footer { background: #161b22; border-top: 1px solid #30363d; color: #8b949e; }
-            footer a { color: #58a6ff; }
-            .footer-divider { color: #30363d; }
-            .modal { background: rgba(0,0,0,0.6); }
-            .modal-content { background: #161b22; border: 1px solid #30363d; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
-            .modal-content h2 { color: #c9d1d9; }
-            .close-btn { color: #8b949e; }
-            .close-btn:hover { color: #c9d1d9; }
-            .modal-body ul { color: #8b949e; }
+            :root {
+                --bg: #0a0b0f;
+                --surface: #14161c;
+                --surface-2: #171a21;
+                --border: #262931;
+                --border-2: #343946;
+                --text: #e9eaef;
+                --muted: #939aa8;
+                --accent: #8b93ff;
+                --accent-soft: #1c1f2b;
+                --term-bg: #0b0d11;
+                --term-bar: #14171e;
+                --term-text: #dcdde4;
+                --term-muted: #6d7280;
+                --rec-bg: #be123c;
+                --rec-border: #fb7185;
+                --shadow: 0 1px 2px rgba(0,0,0,0.5);
+                --shadow-2: 0 6px 22px rgba(0,0,0,0.55);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 隐藏横向滚动条但保留滚动能力 */
+        .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+        /* ---------- header ---------- */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.5rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .mark {
+            width: 28px; height: 28px;
+            flex: none;
+            border-radius: 9px;
+            background: var(--accent);
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .brand { flex: 1; min-width: 0; }
+        .brand strong { display: block; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.01em; }
+        .brand .accent { color: var(--accent); }
+        .pill {
+            font: inherit; font-size: 0.82rem; font-weight: 500;
+            color: var(--text);
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.35rem 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: border-color .15s, color .15s, background-color .15s;
+        }
+        .pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+        /* ---------- hero ---------- */
+        main { flex: 1; padding: 3rem 1.25rem 4rem; }
+        .wrap { max-width: 1040px; margin: 0 auto; }
+        .hero { margin-bottom: 2.25rem; }
+        .eyebrow {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-soft);
+            border-radius: 999px;
+            padding: 0.25rem 0.7rem;
+            margin-bottom: 0.9rem;
+        }
+        .hero h1 { font-size: 1.95rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1.3; }
+        .hero p { margin-top: 0.5rem; color: var(--muted); font-size: 0.95rem; max-width: 46rem; }
+
+        /* ---------- card ---------- */
+        #script-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+            gap: 1.15rem;
+        }
+
+        .card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.35rem;
+            box-shadow: var(--shadow);
+            transition: box-shadow .2s, border-color .2s, transform .2s;
+        }
+        .card:hover { box-shadow: var(--shadow-2); border-color: var(--border-2); transform: translateY(-2px); }
+        .card.featured { border-color: var(--rec-border); }
+
+        .head { display: flex; align-items: flex-start; gap: 0.9rem; }
+        .meta { flex: 1; min-width: 0; }
+        .meta h2 { font-size: 1.05rem; font-weight: 620; letter-spacing: -0.01em; }
+        .filechip {
+            display: inline-block;
+            margin-top: 0.3rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.74rem;
+            color: var(--muted);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.05rem 0.4rem;
+        }
+        .rec {
+            flex: none;
+            font-size: 0.72rem; font-weight: 600;
+            color: #fff;
+            background: var(--rec-bg);
+            border: 1px solid var(--rec-border);
+            border-radius: 999px;
+            padding: 0.12rem 0.6rem;
+            white-space: nowrap;
+        }
+        .desc { margin: 0.7rem 0 0.95rem; font-size: 0.9rem; color: var(--muted); }
+
+        /* ---------- terminal ---------- */
+        .term {
+            margin-top: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--term-bg);
+        }
+        .term-bar {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.45rem 0.5rem 0.45rem 0.75rem;
+            background: var(--term-bar);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .dots { display: flex; gap: 0.32rem; flex: none; }
+        .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--dot-1); }
+        .dots i:nth-child(2) { background: var(--dot-2); }
+        .dots i:nth-child(3) { background: var(--dot-3); }
+        .term-label {
+            flex: 1; min-width: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.74rem;
+            color: var(--term-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .copy {
+            flex: none;
+            font: inherit; font-size: 0.76rem; font-weight: 600;
+            color: var(--term-text);
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 7px;
+            padding: 0.2rem 0.75rem;
+            cursor: pointer;
+            transition: background-color .15s, color .15s;
+        }
+        .copy:hover { background: rgba(255,255,255,0.14); }
+        .copy.copied { color: var(--dot-3); border-color: var(--dot-3); }
+        .cmd {
+            padding: 0.85rem 0.9rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--term-text);
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+        .cmd::before { content: "$ "; color: var(--term-muted); }
+
+        /* ---------- modal ---------- */
+        .modal {
+            display: none;
+            position: fixed; inset: 0; z-index: 200;
+            background: rgba(8,9,12,0.55);
+            justify-content: center; align-items: center;
+            padding: 1.25rem;
+        }
+        .modal.open { display: flex; }
+        .sheet {
+            position: relative;
+            width: 100%; max-width: 470px; max-height: 85vh; overflow-y: auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1.6rem;
+            box-shadow: var(--shadow-2);
+        }
+        .sheet h2 { font-size: 1.1rem; font-weight: 620; margin-bottom: 1.1rem; padding-right: 2rem; }
+        .close {
+            position: absolute; top: 0.9rem; right: 1.15rem;
+            font-size: 1.35rem; line-height: 1;
+            color: var(--muted); background: none; border: none; cursor: pointer;
+        }
+        .close:hover { color: var(--text); }
+        .sheet p.sub { font-size: 0.82rem; font-weight: 600; margin: 1rem 0 0.4rem; }
+        .sheet p.sub:first-child { margin-top: 0; }
+        .sheet ul { margin-left: 1.15rem; font-size: 0.85rem; color: var(--muted); }
+        .sheet li { margin-bottom: 0.2rem; }
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.85em;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.05rem 0.3rem;
+        }
+
+        @media (max-width: 560px) {
+            header { padding: 0.75rem 1rem; gap: 0.5rem; }
+            .pill { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+            main { padding: 2rem 1rem 3rem; }
+            .hero h1 { font-size: 1.5rem; }
+            .card { padding: 1.05rem; }
         }
     </style>
 </head>
 <body>
-    <div class="hidden-assets">
-        <link rel="preload" href="./install-singbox-lite.sh" as="fetch">
-        <link rel="preload" href="./install-singbox-lite-SAN.sh" as="fetch">
-        <link rel="preload" href="./install-singbox-SAN-v4v6.sh" as="fetch">
-        <link rel="preload" href="./zzj.sh" as="fetch">
-    </div>
     <header>
-        <svg class="logo" viewBox="0 0 24 24">
-            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-        </svg>
-        <span class="logo-text">GitHub Pages</span>
-        <button id="info-btn" class="header-btn">使用说明</button>
-        <a href="https://github.com/Uxnar/script" target="_blank" class="header-btn">项目地址</a>
+        <div class="mark">&gt;</div>
+        <div class="brand"><strong>SingBox<span class="accent">·</span>一键部署</strong></div>
+        <button id="info-btn" class="pill">使用说明</button>
+        <a href="https://github.com/Uxnar/script" target="_blank" rel="noopener" class="pill">项目地址</a>
     </header>
-    
+
     <main>
-        <div class="hero">
-            <h1>一键安装脚本</h1>
-            <div id="script-list">
-            </div>
+        <div class="wrap">
+            <section class="hero">
+                <span class="eyebrow">Sing-box · Shell</span>
+                <h1>一键安装脚本</h1>
+                <p>复制下方命令，粘贴到服务器终端执行即可完成部署。所有脚本均支持 Alpine、Debian、Ubuntu 主流发行版。</p>
+            </section>
+            <div id="script-list"></div>
         </div>
     </main>
-    
-    <footer>
-        <p>由 <a href="https://pages.github.com/" target="_blank">GitHub Pages</a> 提供安全加速支持 <span class="footer-divider">|</span> 由 <a href="https://gemini.google.com/" target="_blank">Gemini</a> 提供技术支持</p>
-    </footer>
 
-    <div id="info-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
+    <div id="info-modal" class="modal" role="dialog" aria-modal="true" aria-label="使用说明">
+        <div class="sheet">
+            <button class="close" aria-label="关闭">&times;</button>
             <h2>使用说明</h2>
-            <div class="modal-body">
-                <p>硬件与系统要求：</p>
-                <ul>
-                    <li>运行内存大于等于 100M</li>
-                    <li>存储空间大于等于 1G</li>
-                    <li>使用 Alpine3.20+、Debian11+、Ubuntu18+ 系统</li>
-                </ul>
-                <p>其他注意事项：</p>
-                <ul>
-                    <li>请务必使用 <code>root</code> 用户执行安装命令。</li>
-                    <li>执行前请确保服务器具备正常的互联网连接(能访问GitHub)。</li>
-                    <li>如遇权限问题，请在命令前添加 <code>sudo</code> 或切换至特权用户。</li>
-                </ul>
-            </div>
+            <p class="sub">硬件与系统要求</p>
+            <ul>
+                <li>运行内存大于等于 100M</li>
+                <li>存储空间大于等于 1G</li>
+                <li>使用 Alpine3.20+、Debian11+、Ubuntu18+ 系统</li>
+            </ul>
+            <p class="sub">注意事项</p>
+            <ul>
+                <li>请务必使用 <code>root</code> 用户执行安装命令。</li>
+                <li>执行前请确保服务器能正常访问互联网（含 GitHub）。</li>
+                <li>如遇权限问题，请在命令前加 <code>sudo</code> 或切换到特权用户。</li>
+                <li>GitHub 下载缓慢或失败时可用镜像：<code>SB_MIRROR=https://ghfast.top/ bash 脚本名.sh</code></li>
+            </ul>
         </div>
     </div>
 
@@ -123,90 +313,134 @@
         const scripts = [
             {
                 name: "install-singbox-lite.sh",
-                desc: "这是 Sing-box 的基础安装脚本，适用于常规部署环境。"
+                title: "Sing-box 基础版",
+                desc: "适用于常规部署环境的最小安装版本。",
+                recommend: true
             },
             {
                 name: "install-singbox-lite-SAN.sh",
-                desc: "此脚本包含对（SAN 字段）的支持。"
+                title: "Sing-box SAN 支持版",
+                desc: "在基础版之上增加了证书 SAN 字段支持。"
             },
             {
                 name: "install-singbox-SAN-v4v6.sh",
-                desc: "此脚本包含对（SAN 字段）的支持，支持自动创建支持 IPv4/IPv6 双栈链路。",
+                title: "Sing-box 双栈版（含 SAN）",
+                desc: "支持自动检测并创建 IPv4 / IPv6 双栈链路，检测到公网 IPv6 时会询问是否一并生成 v6 节点；仅提供 Hysteria2 与 VLESS Reality 两种协议。",
                 recommend: true
             },
             {
                 name: "zzj.sh",
-                desc: "中转机脚本，搭配落地机使用。"
+                title: "中转机脚本",
+                desc: "线路中转机专用，需配合已部署好的落地机一同使用。"
             }
         ];
 
-        const currentUrl = window.location.href.split('?')[0].split('#')[0];
-        const baseUrl = currentUrl.endsWith('/') ? currentUrl : currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-
         const prefixCmd = 'command -v curl >/dev/null 2>&1 && echo "curl already installed" || (command -v apt >/dev/null 2>&1 && apt update && apt install -y curl || command -v apk >/dev/null 2>&1 && apk update && apk add curl || command -v yum >/dev/null 2>&1 && yum install -y curl || command -v dnf >/dev/null 2>&1 && dnf install -y curl || { echo "ERROR: No supported package manager found"; exit 1; }); command -v bash >/dev/null 2>&1 && echo "bash already installed" || (command -v apt >/dev/null 2>&1 && apt install -y bash || command -v apk >/dev/null 2>&1 && apk add bash || command -v yum >/dev/null 2>&1 && yum install -y bash || command -v dnf >/dev/null 2>&1 && dnf install -y bash || { echo "ERROR: bash not available"; exit 1; });';
 
-        const scriptListContainer = document.getElementById('script-list');
+        const baseUrl = (() => {
+            const cur = window.location.href.split('?')[0].split('#')[0];
+            return cur.endsWith('/') ? cur : cur.substring(0, cur.lastIndexOf('/') + 1);
+        })();
 
-        scripts.forEach(scriptObj => {
-            const scriptUrl = baseUrl + scriptObj.name;
-            const fullCommand = `${prefixCmd} curl -k -sL ${scriptUrl} -o /tmp/${scriptObj.name} && bash /tmp/${scriptObj.name}`;
+        const list = document.getElementById('script-list');
 
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'script-item';
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            document.body.removeChild(ta);
+            return ok;
+        }
 
-            const title = document.createElement('div');
-            title.className = 'script-title';
-            title.textContent = scriptObj.name;
-            if (scriptObj.recommend) {
-                const badge = document.createElement('span');
-                badge.className = 'recommend-badge';
-                badge.textContent = '\uD83D\uDD25 推荐';
-                title.appendChild(badge);
+        scripts.forEach((item, i) => {
+            const fullCommand = `${prefixCmd} curl -k -sL ${baseUrl}${item.name} -o /tmp/${item.name} && bash /tmp/${item.name}`;
+
+            const card = document.createElement('article');
+            card.className = 'card' + (item.recommend ? ' featured' : '');
+
+            const head = document.createElement('div');
+            head.className = 'head';
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const h2 = document.createElement('h2');
+            h2.textContent = item.title;
+            const chip = document.createElement('span');
+            chip.className = 'filechip';
+            chip.textContent = item.name;
+            meta.append(h2, chip);
+            head.append(meta);
+
+            if (item.recommend) {
+                const rec = document.createElement('span');
+                rec.className = 'rec';
+                rec.textContent = '\uD83D\uDD25 推荐';
+                head.append(rec);
             }
 
-            const desc = document.createElement('div');
-            desc.className = 'script-desc';
-            desc.textContent = scriptObj.desc;
+            const desc = document.createElement('p');
+            desc.className = 'desc';
+            desc.textContent = item.desc;
 
-            const cmdBox = document.createElement('div');
-            cmdBox.className = 'command-box';
+            const term = document.createElement('div');
+            term.className = 'term';
 
-            const cmdText = document.createElement('div');
-            cmdText.className = 'command-text';
-            cmdText.textContent = fullCommand;
+            const bar = document.createElement('div');
+            bar.className = 'term-bar';
+            const dots = document.createElement('div');
+            dots.className = 'dots';
+            dots.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+            const label = document.createElement('span');
+            label.className = 'term-label';
+            label.textContent = 'root@server ~';
+            const btn = document.createElement('button');
+            btn.className = 'copy';
+            btn.textContent = '复制';
+            bar.append(dots, label, btn);
 
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-btn';
-            copyBtn.textContent = '复制';
-            
-            copyBtn.onclick = () => {
-                navigator.clipboard.writeText(fullCommand).then(() => {
-                    copyBtn.textContent = '已复制!';
-                    copyBtn.classList.add('copied');
+            const cmd = document.createElement('div');
+            cmd.className = 'cmd no-scrollbar';
+            cmd.textContent = fullCommand;
+
+            btn.onclick = () => {
+                const done = () => {
+                    btn.textContent = '已复制';
+                    btn.classList.add('copied');
                     setTimeout(() => {
-                        copyBtn.textContent = '复制';
-                        copyBtn.classList.remove('copied');
-                    }, 2000);
-                });
+                        btn.textContent = '复制';
+                        btn.classList.remove('copied');
+                    }, 1800);
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(fullCommand).then(done, () => {
+                        if (fallbackCopy(fullCommand)) done();
+                        else btn.textContent = '请手动复制';
+                    });
+                } else if (fallbackCopy(fullCommand)) {
+                    done();
+                } else {
+                    btn.textContent = '请手动复制';
+                }
             };
 
-            cmdBox.appendChild(cmdText);
-            cmdBox.appendChild(copyBtn);
-            
-            itemDiv.appendChild(desc);
-            itemDiv.appendChild(title);
-            itemDiv.appendChild(cmdBox);
+            term.append(bar, cmd);
 
-            scriptListContainer.appendChild(itemDiv);
+            card.append(head, desc, term);
+            list.appendChild(card);
         });
 
         const modal = document.getElementById('info-modal');
-        const infoBtn = document.getElementById('info-btn');
-        const closeBtn = document.querySelector('.close-btn');
-
-        infoBtn.onclick = () => { modal.style.display = 'flex'; };
-        closeBtn.onclick = () => { modal.style.display = 'none'; };
-        window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+        const openModal = () => modal.classList.add('open');
+        const closeModal = () => modal.classList.remove('open');
+        document.getElementById('info-btn').onclick = openModal;
+        modal.querySelector('.close').onclick = closeModal;
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
     </script>
 </body>
 </html>
