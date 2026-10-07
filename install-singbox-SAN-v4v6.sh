@@ -239,15 +239,20 @@ has_ipv6_default_route() {
 }
 
 # 通过外部回显获取「公网看到的」IPv6 地址,同时验证 IPv6 出网真的可用
-# 每条都是纯 IPv6 专属端点 + curl -6 强制走 IPv6,不做任何字符串推断;ip.sb 优先
+# curl -6 强制走 IPv6 传输层,所以 ip.sb 这种双栈域名返回的一定是 IPv6,不存在歧义
+# ip.sb 优先,后面依次尝试专属端点与其它常见回显站
 get_public_ipv6() {
     local ip=""
     for url in \
+        "https://ip.sb" \
         "https://ipv6.ip.sb" \
         "https://api-ipv6.ip.sb" \
         "https://api64.ipify.org" \
         "https://ipv6.icanhazip.com" \
-        "https://v6.ident.me"; do
+        "https://v6.ident.me" \
+        "https://api.ipify.org" \
+        "https://ipinfo.io/ip" \
+        "https://ifconfig.me"; do
         ip=$(curl -6 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
         # 只用「有没有冒号」这种最朴素的判断区分协议族,能拿到就等于这条 IPv6 通了
         case "$ip" in
@@ -255,6 +260,28 @@ get_public_ipv6() {
         esac
     done
     return 1
+}
+
+# 全部探测失败时打印自检信息,方便定位是没路由 / DNS 不通 / 站点被拦
+diagnose_ipv6() {
+    warn "IPv6 探测全部失败,自检信息如下:"
+    local r
+    r=$(curl -6 -sS --max-time 6 https://ip.sb 2>&1 | tail -n 1 || true)
+    echo "   curl -6 https://ip.sb      => ${r:-无返回}"
+    r=$(curl -6 -sS --max-time 6 https://ipv6.ip.sb 2>&1 | tail -n 1 || true)
+    echo "   curl -6 https://ipv6.ip.sb => ${r:-无返回}"
+
+    # 用一个不太可能被拦的站点判断 IPv6 出网本身通不通
+    local code
+    code=$(curl -6 -s -o /dev/null -w '%{http_code}' --max-time 6 https://ipv6.google.com 2>/dev/null || true)
+    echo "   IPv6 出网连通性(ipv6.google.com): HTTP ${code:-失败}"
+
+    if command -v ip >/dev/null 2>&1; then
+        ip -6 addr show scope global 2>/dev/null | awk '/inet6/ {print "   网卡 IPv6 地址: " $2}'
+        local rt
+        rt=$(ip -6 route show default 2>/dev/null | head -n 1 || true)
+        echo "   IPv6 默认路由: ${rt:-无}"
+    fi
 }
 
 # 综合判定:外部回显优先(公网真实可见),其次本机网卡地址,ULA/内网地址一律忽略
@@ -399,7 +426,8 @@ if [ -z "$CUSTOM_IP" ]; then
             info "跳过 IPv6 节点,仅创建 IPv4 节点"
         fi
     else
-        info "未检测到可用的公网 IPv6 地址(已排除 ULA/内网地址),仅创建 IPv4 节点"
+        diagnose_ipv6
+        info "未检测到可用的公网 IPv6,仅创建 IPv4 节点"
     fi
 else
     info "已手动指定连接地址,跳过 IPv6 创建选项"
@@ -798,16 +826,20 @@ SYSTEMD
 setup_service
 
 # -----------------------
-# 获取公网 IPv4(同样外部回现实测,ip.sb 优先)
-# 每条都是纯 IPv4 专属端点 + curl -4 强制走 IPv4
-# 注意:绝不能用 ip.sb 这种双栈域名,IPv6 优先的机器上它会返回 IPv6
+# curl -4 强制走 IPv4 传输层,所以连 ip.sb 这种双栈域名返回的也一定是 IPv4,不存在歧义
+# ip.sb 优先,后面依次尝试专属端点与其它常见回显站
 get_public_ip() {
     local ip=""
     for url in \
+        "https://ip.sb" \
         "https://ipv4.ip.sb" \
         "https://api-ipv4.ip.sb" \
         "https://ipv4.icanhazip.com" \
-        "https://v4.ident.me"; do
+        "https://v4.ident.me" \
+        "https://api.ipify.org" \
+        "https://ipinfo.io/ip" \
+        "https://ifconfig.me" \
+        "https://ipecho.net/plain"; do
         ip=$(curl -4 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
         case "$ip" in
             *:*) continue ;;              # 万一拿到 IPv6,丢弃换下一个
@@ -1033,8 +1065,9 @@ read_config() {
 
 get_public_ip() {
     local ip=""
-    for url in "https://ipv4.ip.sb" "https://api-ipv4.ip.sb" \
-               "https://ipv4.icanhazip.com" "https://v4.ident.me"; do
+    for url in "https://ip.sb" "https://ipv4.ip.sb" "https://api-ipv4.ip.sb" \
+               "https://ipv4.icanhazip.com" "https://v4.ident.me" \
+               "https://api.ipify.org" "https://ipinfo.io/ip" "https://ifconfig.me"; do
         ip=$(curl -4 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
         case "$ip" in
             *:*) continue ;;                # 万一拿到 IPv6,丢弃换下一个
@@ -1395,7 +1428,8 @@ SYSTEMD
     systemctl restart sing-box
 fi
 
-PUB_IP=$(curl -4 -s --max-time 5 https://ipv4.ip.sb 2>/dev/null \
+PUB_IP=$(curl -4 -s --max-time 5 https://ip.sb 2>/dev/null \
+         || curl -4 -s --max-time 5 https://ipv4.ip.sb 2>/dev/null \
          || curl -4 -s --max-time 5 https://ipv4.icanhazip.com 2>/dev/null \
          || echo "YOUR_RELAY_IP")
 RELAY_URI="vless://$UUID@$PUB_IP:$LISTEN_PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=__REALITY_SNI__&fp=chrome&pbk=$REALITY_PUB&sid=$REALITY_SID#relay"
