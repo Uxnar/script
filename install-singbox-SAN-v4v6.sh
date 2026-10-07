@@ -132,56 +132,149 @@ fmt_host() {
     esac
 }
 
-# 检测本机是否存在可用的全局 IPv6 地址(排除 fe80:: 链路本地地址与 ::1 回环)
-detect_ipv6_addr() {
-    local addr=""
+# 判断一个 IPv6 是否属于「公网全局单播」 2000::/3
+# 一次性排除: ::1 回环、::ffff: IPv4-mapped、fe80::/10 链路本地、
+#            fc00::/7 ULA 内网(含 fd00::/8、Tailscale fd7a: 虚拟网段)、2001:db8 文档保留段
+is_global_ipv6() {
+    local a="${1%%/*}"
+    a="${a%%%*}"
+    a="$(printf '%s' "$a" | tr 'A-F' 'a-f')"
+    [ -z "$a" ] && return 1
 
+    local first="${a%%:*}"
+    if [ -z "$first" ]; then
+        # 以 "::" 开头 -> 回环 / IPv4-mapped / 未指定地址,一律不要
+        return 1
+    fi
+
+    case "$first" in
+        *[!0-9a-f]*) return 1 ;;
+    esac
+
+    # 2000::/3 => 首段落在 0x2000 - 0x3fff
+    local v=$((16#$first))
+    if [ "$v" -lt 8192 ] || [ "$v" -gt 16383 ]; then
+        return 1
+    fi
+
+    # 2001:db8::/32 文档保留段
+    if [ "$v" -eq 8193 ]; then
+        local second="${a#*:}"; second="${second%%:*}"
+        case "$second" in
+            db8|0db8) return 1 ;;
+        esac
+    fi
+
+    return 0
+}
+
+# 收集本机所有候选 IPv6 地址(含 ULA 等),逐个过滤出公网全局单播地址
+collect_ipv6_candidates() {
+    local list=""
     if command -v ip >/dev/null 2>&1; then
-        addr=$(ip -6 addr show scope global 2>/dev/null \
+        list=$(ip -6 addr show scope global 2>/dev/null \
+            | grep 'inet6' \
+            | grep -v 'tentative' \
+            | grep -v 'dadfailed' \
+            | grep -v 'deprecated' \
+            | awk '{print $2}' \
+            | awk -F'/' '{print $1}' || true)
+    fi
+
+    if [ -z "$list" ] && command -v ifconfig >/dev/null 2>&1; then
+        list=$(ifconfig 2>/dev/null \
             | awk '/inet6/ {print $2}' \
-            | awk -F'/' '{print $1}' \
-            | grep -v '^fe80' \
-            | grep -v '^::1$' \
-            | head -n 1 || true)
+            | awk -F'/' '{print $1}' || true)
     fi
 
-    if [ -z "$addr" ] && command -v ifconfig >/dev/null 2>&1; then
-        addr=$(ifconfig 2>/dev/null \
-            | awk '/inet6/ {print $2}' \
-            | awk -F'/' '{print $1}' \
-            | grep -v '^fe80' \
-            | grep -v '^::1$' \
-            | head -n 1 || true)
+    if [ -z "$list" ] && [ -r /proc/net/if_inet6 ]; then
+        list=$(awk '{print $1}' /proc/net/if_inet6 2>/dev/null \
+            | sed 's/.\{4\}/&:/g; s/:$//' || true)
     fi
 
-    if [ -z "$addr" ] && [ -r /proc/net/if_inet6 ]; then
-        addr=$(awk '{print $1}' /proc/net/if_inet6 2>/dev/null \
-            | grep -v '^fe80' \
-            | grep -v '^00000000000000000000000000000001$' \
-            | head -n 1 | sed 's/.\{4\}/&:/g; s/:$//' || true)
+    printf '%s\n' "$list" | while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        is_global_ipv6 "$line" && printf '%s\n' "$line"
+    done
+}
+
+# 检测本机是否存在可用的公网 IPv6 地址
+# 主做法:直接问内核「要去公网 IPv6 目标,你会用哪个源地址」——由路由表决定,不靠猜
+detect_ipv6_addr() {
+    if command -v ip >/dev/null 2>&1; then
+        for target in 2001:4860:4860::8888 2606:4700:4700::1111 2400:3200::1; do
+            src=$(ip -6 route get "$target" 2>/dev/null \
+                | awk '{for(i=1;i<NF;i++){if($i=="src"){print $(i+1); exit}}}' || true)
+            if [ -n "$src" ] && is_global_ipv6 "$src"; then
+                echo "$src"
+                return 0
+            fi
+        done
     fi
 
-    # 确认是合法的 IPv6 格式
-    if [ -n "$addr" ] && [[ "$addr" == *:* ]]; then
-        echo "$addr"
+    # 兜底:busybox 的 ip 可能不支持 route get,退回扫描网卡地址并剔除内网地址
+    local cands stable_addr="" any_addr="" c
+    cands="$(collect_ipv6_candidates || true)"
+    [ -z "$cands" ] && return 1
+
+    while IFS= read -r c; do
+        [ -z "$c" ] && continue
+        [ -z "$any_addr" ] && any_addr="$c"
+        stable_addr="$c"
+        break
+    done <<< "$cands"
+
+    local pick="${stable_addr:-$any_addr}"
+    if [ -n "$pick" ] && is_global_ipv6 "$pick"; then
+        echo "$pick"
         return 0
     fi
     return 1
 }
 
-# 通过外部接口获取公网 IPv6(仅作兜底/展示用)
+# 是否存在 IPv6 默认路由(有地址不代表能出网)
+has_ipv6_default_route() {
+    ip -6 route show default 2>/dev/null | grep -q 'via\|dev' && return 0
+    return 1
+}
+
+# 通过外部回显获取「公网看到的」IPv6 地址,同时验证 IPv6 出网真的可用
+# 每条都是纯 IPv6 专属端点 + curl -6 强制走 IPv6,不做任何字符串推断;ip.sb 优先
 get_public_ipv6() {
     local ip=""
     for url in \
+        "https://ipv6.ip.sb" \
+        "https://api-ipv6.ip.sb" \
         "https://api64.ipify.org" \
         "https://ipv6.icanhazip.com" \
         "https://v6.ident.me"; do
         ip=$(curl -6 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
-        if [ -n "$ip" ] && [[ "$ip" == *:* ]]; then
-            echo "$ip"
-            return 0
-        fi
+        # 只用「有没有冒号」这种最朴素的判断区分协议族,能拿到就等于这条 IPv6 通了
+        case "$ip" in
+            *:*) echo "$ip"; return 0 ;;
+        esac
     done
+    return 1
+}
+
+# 综合判定:外部回显优先(公网真实可见),其次本机网卡地址,ULA/内网地址一律忽略
+resolve_ipv6() {
+    local ext="" loc=""
+
+    info "正在检测 IPv6 可用性..."
+
+    ext="$(get_public_ipv6 || true)"
+    if [ -n "$ext" ]; then
+        echo "PUBLIC|$ext"
+        return 0
+    fi
+
+    loc="$(detect_ipv6_addr || true)"
+    if [ -n "$loc" ]; then
+        echo "LOCAL|$loc"
+        return 0
+    fi
+
     return 1
 }
 
@@ -270,14 +363,25 @@ ENABLE_V6=false
 V6_ADDR=""
 
 if [ -z "$CUSTOM_IP" ]; then
-    DETECTED_V6="$(detect_ipv6_addr || true)"
-    # 本地接口没取到时(NAT/容器等场景),再通过网络兜底检测一次
-    if [ -z "$DETECTED_V6" ]; then
-        DETECTED_V6="$(get_public_ipv6 || true)"
-        [ -n "$DETECTED_V6" ] && info "通过网络接口检测到 IPv6 出口地址: $DETECTED_V6"
-    fi
+    DETECTED_V6=""
+    V6_SOURCE=""
+    V6_RESULT="$(resolve_ipv6 || true)"
+    case "$V6_RESULT" in
+        PUBLIC\|*) V6_SOURCE="公网回显"; DETECTED_V6="${V6_RESULT#PUBLIC|}" ;;
+        LOCAL\|*)  V6_SOURCE="网卡地址"; DETECTED_V6="${V6_RESULT#LOCAL|}" ;;
+        *)         V6_SOURCE=""; DETECTED_V6="" ;;
+    esac
+
     if [ -n "$DETECTED_V6" ]; then
-        info "检测到本机 IPv6 地址: $DETECTED_V6"
+        info "检测到可用公网 IPv6: $DETECTED_V6 (来源: $V6_SOURCE)"
+        # 只有网卡地址、没有通过公网回显验证时给出提醒
+        if [ "$V6_SOURCE" = "网卡地址" ]; then
+            if has_ipv6_default_route; then
+                warn "该地址未能通过公网回显验证(外网检测接口可能被拦),请确认它能被公网访问"
+            else
+                warn "未检测到 IPv6 默认路由,该地址大概率无法出网"
+            fi
+        fi
         echo ""
         echo "是否同时创建 IPv6 节点?(同一端口 v4/v6 双栈监听,会额外生成一份 v6 链接)(y/N):"
         read -r USE_V6
@@ -287,12 +391,15 @@ if [ -z "$CUSTOM_IP" ]; then
             read -r V6_INPUT
             V6_INPUT="$(echo "$V6_INPUT" | tr -d '[:space:]' || true)"
             V6_ADDR="${V6_INPUT:-$DETECTED_V6}"
+            if ! is_global_ipv6 "$V6_ADDR"; then
+                warn "注意: $V6_ADDR 不是公网全局单播地址(ULA/内网地址无法被外部访问)"
+            fi
             info "IPv6 节点连接地址: $V6_ADDR"
         else
             info "跳过 IPv6 节点,仅创建 IPv4 节点"
         fi
     else
-        info "未检测到可用的 IPv6 地址,仅创建 IPv4 节点"
+        info "未检测到可用的公网 IPv6 地址(已排除 ULA/内网地址),仅创建 IPv4 节点"
     fi
 else
     info "已手动指定连接地址,跳过 IPv6 创建选项"
@@ -691,20 +798,21 @@ SYSTEMD
 setup_service
 
 # -----------------------
-# 获取公网 IPv4
+# 获取公网 IPv4(同样外部回现实测,ip.sb 优先)
+# 每条都是纯 IPv4 专属端点 + curl -4 强制走 IPv4
+# 注意:绝不能用 ip.sb 这种双栈域名,IPv6 优先的机器上它会返回 IPv6
 get_public_ip() {
     local ip=""
     for url in \
-        "https://api.ipify.org" \
-        "https://ipinfo.io/ip" \
-        "https://ifconfig.me" \
-        "https://icanhazip.com" \
-        "https://ipecho.net/plain"; do
-        ip=$(curl -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
-        if [ -n "$ip" ] && [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "$ip"
-            return 0
-        fi
+        "https://ipv4.ip.sb" \
+        "https://api-ipv4.ip.sb" \
+        "https://ipv4.icanhazip.com" \
+        "https://v4.ident.me"; do
+        ip=$(curl -4 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
+        case "$ip" in
+            *:*) continue ;;              # 万一拿到 IPv6,丢弃换下一个
+            *.*.*.*) echo "$ip"; return 0 ;;
+        esac
     done
     return 1
 }
@@ -925,9 +1033,13 @@ read_config() {
 
 get_public_ip() {
     local ip=""
-    for url in "https://api.ipify.org" "https://ipinfo.io/ip" "https://ifconfig.me"; do
-        ip=$(curl -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]')
-        [ -n "$ip" ] && echo "$ip" && return 0
+    for url in "https://ipv4.ip.sb" "https://api-ipv4.ip.sb" \
+               "https://ipv4.icanhazip.com" "https://v4.ident.me"; do
+        ip=$(curl -4 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]' || true)
+        case "$ip" in
+            *:*) continue ;;                # 万一拿到 IPv6,丢弃换下一个
+            *.*.*.*) echo "$ip"; return 0 ;;
+        esac
     done
     echo "YOUR_SERVER_IP"
 }
@@ -1283,7 +1395,9 @@ SYSTEMD
     systemctl restart sing-box
 fi
 
-PUB_IP=$(curl -s https://api.ipify.org 2>/dev/null || echo "YOUR_RELAY_IP")
+PUB_IP=$(curl -4 -s --max-time 5 https://ipv4.ip.sb 2>/dev/null \
+         || curl -4 -s --max-time 5 https://ipv4.icanhazip.com 2>/dev/null \
+         || echo "YOUR_RELAY_IP")
 RELAY_URI="vless://$UUID@$PUB_IP:$LISTEN_PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=__REALITY_SNI__&fp=chrome&pbk=$REALITY_PUB&sid=$REALITY_SID#relay"
 
 echo "$RELAY_URI" > /etc/sing-box/relay_uri.txt
