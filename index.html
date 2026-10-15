@@ -53,7 +53,13 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { -webkit-text-size-adjust: 100%; }
+        /* 隐藏页面垂直滚动条，保留滚动能力 */
+        html {
+            -webkit-text-size-adjust: 100%;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        html::-webkit-scrollbar { width: 0; height: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
             background: var(--bg);
@@ -63,7 +69,10 @@
             flex-direction: column;
             line-height: 1.65;
             -webkit-font-smoothing: antialiased;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
+        body::-webkit-scrollbar { width: 0; height: 0; }
 
         /* 隐藏横向滚动条但保留滚动能力 */
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -111,7 +120,7 @@
 
         /* ---------- hero ---------- */
         main { flex: 1; padding: 3rem 1.25rem 4rem; }
-        .wrap { max-width: 1040px; margin: 0 auto; }
+        .wrap { max-width: 880px; margin: 0 auto; }
         .hero { margin-bottom: 2.25rem; }
         .eyebrow {
             display: inline-flex; align-items: center; gap: 0.4rem;
@@ -125,30 +134,78 @@
         .hero h1 { font-size: 1.95rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1.3; }
         .hero p { margin-top: 0.5rem; color: var(--muted); font-size: 0.95rem; max-width: 46rem; }
 
-        /* ---------- card ---------- */
+        /* ---------- 折叠列表 ---------- */
         #script-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
-            gap: 1.15rem;
-        }
-
-        .card {
             display: flex;
             flex-direction: column;
-            height: 100%;
+            gap: 0.7rem;
+        }
+
+        .item {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.35rem;
+            border-radius: 14px;
             box-shadow: var(--shadow);
-            transition: box-shadow .2s, border-color .2s, transform .2s;
+            overflow: hidden;
+            transition: box-shadow .2s, border-color .2s;
         }
-        .card:hover { box-shadow: var(--shadow-2); border-color: var(--border-2); transform: translateY(-2px); }
-        .card.featured { border-color: var(--rec-border); }
+        .item:hover { border-color: var(--border-2); }
+        .item.open { border-color: var(--border-2); box-shadow: var(--shadow-2); }
+        .item.featured { border-color: var(--rec-border); }
 
-        .head { display: flex; align-items: flex-start; gap: 0.9rem; }
-        .meta { flex: 1; min-width: 0; }
-        .meta h2 { font-size: 1.05rem; font-weight: 620; letter-spacing: -0.01em; }
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.55rem 1.15rem 0.55rem 0.8rem;
+            transition: background-color .15s;
+        }
+        .item:hover .row { background: var(--surface-2); }
+
+        .toggle {
+            flex: 1; min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.4rem 0.25rem;
+            font: inherit;
+            color: inherit;
+            text-align: left;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+        /* 未展开指向标题（右），展开后旋转 90° 指向下方内容 */
+        .caret {
+            flex: none;
+            width: 0; height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 6px solid var(--muted);
+            transition: transform .25s ease;
+        }
+        .item.open .caret { transform: rotate(90deg); }
+
+        .row-title {
+            flex: 1; min-width: 0;
+            font-size: 0.98rem; font-weight: 600; letter-spacing: -0.01em;
+        }
+
+        /* 0fr → 1fr 实现无需固定高度的展开动画 */
+        .panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows .28s ease;
+        }
+        .item.open .panel { grid-template-rows: 1fr; }
+        .panel-inner { overflow: hidden; min-height: 0; }
+        .panel-body { padding: 0 1.15rem 1.15rem; }
+        .panel-body .desc { margin: 0.55rem 0 0.9rem; }
+        .panel-body .term { margin-top: 0; }
+
         .filechip {
             display: inline-block;
             margin-top: 0.3rem;
@@ -171,6 +228,25 @@
             white-space: nowrap;
         }
         .desc { margin: 0.7rem 0 0.95rem; font-size: 0.9rem; color: var(--muted); }
+
+        /* ---------- note modal ---------- */
+        .sheet p.nline { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.6rem; }
+        .sheet p.nline:last-child { margin-bottom: 0; }
+        .sheet p.nline code { font-size: 0.82em; }
+        .sheet .ncmd {
+            display: block;
+            margin: 0.7rem 0;
+            padding: 0.7rem 0.8rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.78rem;
+            line-height: 1.65;
+            color: var(--term-text);
+            background: var(--term-bg);
+            border-radius: 9px;
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+        .sheet .ncmd::before { content: "$ "; color: var(--term-muted); }
 
         /* ---------- terminal ---------- */
         .term {
@@ -212,6 +288,18 @@
         }
         .copy:hover { background: rgba(255,255,255,0.14); }
         .copy.copied { color: var(--dot-3); border-color: var(--dot-3); }
+
+        /* 折叠行内的复制按钮：浅色底上的变体 */
+        .copy.light {
+            color: var(--muted);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            padding: 0.28rem 0.8rem;
+        }
+        .copy.light:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+        .copy.light.copied { color: var(--dot-3); border-color: var(--dot-3); background: transparent; }
+        /* 展开后收起行内复制按钮，交给终端里那个 */
+        .item.open .row-copy { display: none; }
         .cmd {
             padding: 0.85rem 0.9rem;
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -266,7 +354,10 @@
             .pill { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
             main { padding: 2rem 1rem 3rem; }
             .hero h1 { font-size: 1.5rem; }
-            .card { padding: 1.05rem; }
+            .row { padding: 0.5rem 0.9rem 0.5rem 0.6rem; gap: 0.45rem; }
+            .panel-body { padding: 0 0.9rem 0.9rem; }
+            .row-title { font-size: 0.93rem; }
+            .rec { padding: 0.12rem 0.5rem; font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -283,7 +374,7 @@
             <section class="hero">
                 <span class="eyebrow">Sing-box · Shell</span>
                 <h1>一键安装脚本</h1>
-                <p>复制下方命令，粘贴到服务器终端执行即可完成部署。所有脚本均支持 Alpine、Debian、Ubuntu 主流发行版。</p>
+                <p>点击展开任一脚本，复制命令粘贴到服务器终端执行即可完成部署。所有脚本均支持 Alpine、Debian、Ubuntu 主流发行版。</p>
             </section>
             <div id="script-list"></div>
         </div>
@@ -305,7 +396,17 @@
                 <li>执行前请确保服务器能正常访问互联网（含 GitHub）。</li>
                 <li>如遇权限问题，请在命令前加 <code>sudo</code> 或切换到特权用户。</li>
                 <li>GitHub 下载缓慢或失败时可用镜像：<code>SB_MIRROR=https://ghfast.top/ bash 脚本名.sh</code></li>
+                <li>自动版（<code>install-singbox-auto.sh</code>）复制命令后，需在末尾手动加上端口号，例如 <code>bash /tmp/install-singbox-auto.sh 8443</code>；带端口执行才是全程零输入，不填则运行时会询问一次。</li>
             </ul>
+        </div>
+    </div>
+
+    <div id="note-modal" class="modal" role="dialog" aria-modal="true" aria-label="复制提示">
+        <div class="sheet">
+            <button class="close" aria-label="关闭">&times;</button>
+            <h2 id="note-title">命令已复制</h2>
+            <div id="note-body"></div>
+            <p class="ncmd" id="note-cmd"></p>
         </div>
     </div>
 
@@ -332,6 +433,23 @@
                 name: "zzj.sh",
                 title: "中转机脚本",
                 desc: "线路中转机专用，需配合已部署好的落地机一同使用。"
+            },
+            {
+                name: "install-singbox-auto.sh",
+                title: "Sing-box 自动版（半无人值守）",
+                desc: "在双栈版基础上改造：协议固定为 VLESS Reality + Hysteria2 并共用同一端口；检测到公网 IPv6 自动开启；节点名自动生成；检测到已装旧版会自动卸载重装。适合批量部署。",
+                recommend: true,
+                badge: "⚡ 无人值守",
+                note: {
+                    title: "温馨提示",
+                    cmd: "bash .../tmp/install-singbox-auto.sh 8443",
+                    lines: [
+                        "刚复制的命令还差一个端口号。在末尾补上你要用的端口再执行，才是全程零输入。",
+                        "不填端口也能跑，只是运行时会询问一次。",
+                        "两个协议共用同一端口，防火墙需同时放行 TCP 与 UDP",
+                        "参考下面命令展示"
+                    ]
+                }
             }
         ];
 
@@ -357,31 +475,107 @@
             return ok;
         }
 
+        /* note.lines 文本中用反引号包裹的片段会渲染成 <code> */
+        function fillLine(el, text) {
+            text.split('`').forEach((part, i) => {
+                if (!part) return;
+                if (i % 2) {
+                    const c = document.createElement('code');
+                    c.textContent = part;
+                    el.appendChild(c);
+                } else {
+                    el.appendChild(document.createTextNode(part));
+                }
+            });
+        }
+
+        const noteModal = document.getElementById('note-modal');
+        const noteTitle = document.getElementById('note-title');
+        const noteBody = document.getElementById('note-body');
+        const noteCmd = document.getElementById('note-cmd');
+
+        function showNote(note) {
+            noteTitle.textContent = note.title || '命令已复制';
+            noteBody.textContent = '';
+            (note.lines || []).forEach(text => {
+                const p = document.createElement('p');
+                p.className = 'nline';
+                fillLine(p, text);
+                noteBody.appendChild(p);
+            });
+            if (note.cmd) {
+                noteCmd.style.display = '';
+                noteCmd.textContent = note.cmd;
+            } else {
+                noteCmd.style.display = 'none';
+                noteCmd.textContent = '';
+            }
+            noteModal.classList.add('open');
+        }
+
         scripts.forEach((item, i) => {
             const fullCommand = `${prefixCmd} curl -k -sL ${baseUrl}${item.name} -o /tmp/${item.name} && bash /tmp/${item.name}`;
 
             const card = document.createElement('article');
-            card.className = 'card' + (item.recommend ? ' featured' : '');
+            card.className = 'item' + (item.recommend ? ' featured' : '');
 
+            /* 复制按钮工厂：折叠行内与终端内各放一个，行为一致 */
+            const makeCopyBtn = (cls) => {
+                const b = document.createElement('button');
+                b.className = cls;
+                b.type = 'button';
+                b.textContent = '复制';
+                b.onclick = () => {
+                    const done = () => {
+                        b.textContent = '已复制';
+                        b.classList.add('copied');
+                        setTimeout(() => {
+                            b.textContent = '复制';
+                            b.classList.remove('copied');
+                        }, 1800);
+                        if (item.note) showNote(item.note);
+                    };
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(fullCommand).then(done, () => {
+                            if (fallbackCopy(fullCommand)) done();
+                            else b.textContent = '请手动复制';
+                        });
+                    } else if (fallbackCopy(fullCommand)) {
+                        done();
+                    } else {
+                        b.textContent = '请手动复制';
+                    }
+                };
+                return b;
+            };
+
+            /* --- 折叠头：三角 + 标题 + 红色标识 + 复制 --- */
             const head = document.createElement('div');
-            head.className = 'head';
+            head.className = 'row';
 
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            const h2 = document.createElement('h2');
+            const toggle = document.createElement('button');
+            toggle.className = 'toggle';
+            toggle.type = 'button';
+            toggle.setAttribute('aria-expanded', 'false');
+
+            const caret = document.createElement('span');
+            caret.className = 'caret';
+
+            const h2 = document.createElement('span');
+            h2.className = 'row-title';
             h2.textContent = item.title;
-            const chip = document.createElement('span');
-            chip.className = 'filechip';
-            chip.textContent = item.name;
-            meta.append(h2, chip);
-            head.append(meta);
 
-            if (item.recommend) {
+            toggle.append(caret, h2);
+
+            if (item.recommend || item.badge) {
                 const rec = document.createElement('span');
                 rec.className = 'rec';
-                rec.textContent = '\uD83D\uDD25 推荐';
-                head.append(rec);
+                rec.textContent = item.badge || '\uD83D\uDD25 推荐';
+                toggle.append(rec);
             }
+
+            const rowCopy = makeCopyBtn('copy light row-copy');
+            head.append(toggle, rowCopy);
 
             const desc = document.createElement('p');
             desc.className = 'desc';
@@ -398,49 +592,56 @@
             const label = document.createElement('span');
             label.className = 'term-label';
             label.textContent = 'root@server ~';
-            const btn = document.createElement('button');
-            btn.className = 'copy';
-            btn.textContent = '复制';
+            const btn = makeCopyBtn('copy');
             bar.append(dots, label, btn);
 
             const cmd = document.createElement('div');
             cmd.className = 'cmd no-scrollbar';
             cmd.textContent = fullCommand;
 
-            btn.onclick = () => {
-                const done = () => {
-                    btn.textContent = '已复制';
-                    btn.classList.add('copied');
-                    setTimeout(() => {
-                        btn.textContent = '复制';
-                        btn.classList.remove('copied');
-                    }, 1800);
-                };
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(fullCommand).then(done, () => {
-                        if (fallbackCopy(fullCommand)) done();
-                        else btn.textContent = '请手动复制';
-                    });
-                } else if (fallbackCopy(fullCommand)) {
-                    done();
-                } else {
-                    btn.textContent = '请手动复制';
-                }
-            };
-
             term.append(bar, cmd);
 
-            card.append(head, desc, term);
+            /* --- 展开区：文件名、说明、命令 --- */
+            const chip = document.createElement('span');
+            chip.className = 'filechip';
+            chip.textContent = item.name;
+
+            const body = document.createElement('div');
+            body.className = 'panel-body';
+            body.append(chip, desc, term);
+
+            const inner = document.createElement('div');
+            inner.className = 'panel-inner';
+            inner.append(body);
+
+            const panel = document.createElement('div');
+            panel.className = 'panel';
+            panel.append(inner);
+
+            toggle.onclick = () => {
+                const open = !card.classList.contains('open');
+                list.querySelectorAll('.item.open').forEach(el => {
+                    if (el === card) return;
+                    el.classList.remove('open');
+                    el.querySelector('.toggle').setAttribute('aria-expanded', 'false');
+                });
+                card.classList.toggle('open', open);
+                toggle.setAttribute('aria-expanded', String(open));
+            };
+
+            card.append(head, panel);
             list.appendChild(card);
         });
 
         const modal = document.getElementById('info-modal');
-        const openModal = () => modal.classList.add('open');
-        const closeModal = () => modal.classList.remove('open');
-        document.getElementById('info-btn').onclick = openModal;
-        modal.querySelector('.close').onclick = closeModal;
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+        document.getElementById('info-btn').onclick = () => modal.classList.add('open');
+
+        document.querySelectorAll('.modal').forEach(m => {
+            const close = () => m.classList.remove('open');
+            m.querySelector('.close').onclick = close;
+            m.addEventListener('click', (e) => { if (e.target === m) close(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        });
     </script>
 </body>
 </html>

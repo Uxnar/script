@@ -12,6 +12,7 @@
 | `install-singbox-lite.sh` | 基础版，适合常规环境 | SS / HY2 / TUIC / VLESS Reality |
 | `install-singbox-lite-SAN.sh` | 在基础版之上为自签证书补上 SAN 字段 | 同上 |
 | `install-singbox-SAN-v4v6.sh` | 推荐。含 SAN，支持 IPv4 / IPv6 双栈，已隐藏 SS 与 TUIC | HY2 / VLESS Reality |
+| `install-singbox-auto.sh` | 半无人值守版。端口走命令行参数，全程零输入，适合批量部署 | 同上 |
 | `zzj.sh` | 中转机脚本（基于 Realm 做端口转发） | 端口转发 |
 
 > SAN = 证书的主题备用名称（Subject Alternative Name）。现在的 TLS 客户端已不再认 CN，缺 SAN 的证书会被判定为不合法，HY2 需要它。
@@ -70,6 +71,40 @@ journalctl -u sing-box -f       # Alpine: tail -f /var/log/sing-box.log
 
 ```bash
 SB_MIRROR=https://ghfast.top/ bash install-singbox-SAN-v4v6.sh
+```
+
+## 自动版（install-singbox-auto.sh）
+
+由双栈版改造的**半无人值守**版本，适合批量、脚本化部署。差别如下：
+
+| 环节 | 双栈版 | 自动版 |
+| --- | --- | --- |
+| 端口 | 逐个交互输入 | 命令行参数传入，省略才交互问一次 |
+| 协议 | 交互选择 | 固定 VLESS Reality + Hysteria2，共用同一端口（TCP / UDP 套接字不同，不冲突） |
+| IPv6 | 检测到后询问 | 检测到公网 IPv6 直接开启 |
+| 节点名 | 交互输入 | 自动生成 `auto-<IPv4前两段>`，v6 加 `-v6` 后缀 |
+| 已装旧版 | 询问是否重装 | 自动卸载后重装 |
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Uxnar/script/main/install-singbox-auto.sh -o /tmp/install.sh && bash /tmp/install.sh 8443
+```
+
+带端口号执行即**全程零输入**；省略端口则只问这一次。等价写法 `bash /tmp/install.sh --port 8443`。
+
+可用环境变量覆盖默认值：
+
+| 变量 | 作用 | 默认 |
+| --- | --- | --- |
+| `CUSTOM_IP` | 指定连接 IP / DDNS 域名 | 自动探测公网 IPv4 |
+| `REALITY_SNI` | Reality 的 SNI | `addons.mozilla.org` |
+| `NODE_NAME` | 强制指定节点名 | 自动生成 |
+| `ENABLE_V6` | 强制关闭 IPv6 节点 | 检测到就开 |
+| `V6_ADDR` | 指定 IPv6 节点地址 | 探测结果 |
+
+因为两个协议复用同一端口，**防火墙需要同时放行 TCP 和 UDP**：
+
+```bash
+ufw allow 8443/tcp && ufw allow 8443/udp
 ```
 
 ## 中转机（zzj.sh）
