@@ -415,13 +415,7 @@
             {
                 name: "install-singbox-lite.sh",
                 title: "Sing-box 基础版",
-                desc: "适用于常规部署环境的最小安装版本。",
-                recommend: true
-            },
-            {
-                name: "install-singbox-lite-SAN.sh",
-                title: "Sing-box SAN 支持版",
-                desc: "在基础版之上增加了证书 SAN 字段支持。"
+                desc: "适用于常规部署环境的最小安装版本。"
             },
             {
                 name: "install-singbox-SAN-v4v6.sh",
@@ -430,16 +424,11 @@
                 recommend: true
             },
             {
-                name: "zzj.sh",
-                title: "中转机脚本",
-                desc: "线路中转机专用，需配合已部署好的落地机一同使用。"
-            },
-            {
                 name: "install-singbox-auto.sh",
-                title: "Sing-box 自动版（半无人值守）",
+                title: "Sing-box 自动版（无人值守）",
                 desc: "在双栈版基础上改造：协议固定为 VLESS Reality + Hysteria2 并共用同一端口；检测到公网 IPv6 自动开启；节点名自动生成；检测到已装旧版会自动卸载重装。适合批量部署。",
                 recommend: true,
-                badge: "⚡ 无人值守",
+                badge: "🤖无人值守",
                 note: {
                     title: "温馨提示",
                     cmd: "bash .../tmp/install-singbox-auto.sh 8443",
@@ -450,6 +439,11 @@
                         "参考下面命令展示"
                     ]
                 }
+            },
+            {
+                name: "zzj.sh",
+                title: "中转机脚本",
+                desc: "线路中转机专用，需配合已部署好的落地机一同使用。"
             }
         ];
 
