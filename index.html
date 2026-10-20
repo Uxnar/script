@@ -396,7 +396,6 @@
                 <li>执行前请确保服务器能正常访问互联网（含 GitHub）。</li>
                 <li>如遇权限问题，请在命令前加 <code>sudo</code> 或切换到特权用户。</li>
                 <li>GitHub 下载缓慢或失败时可用镜像：<code>SB_MIRROR=https://ghfast.top/ bash 脚本名.sh</code></li>
-                <li>自动版（<code>install-singbox-auto.sh</code>）复制命令后，需在末尾手动加上端口号，例如 <code>bash /tmp/install-singbox-auto.sh 8443</code>；带端口执行才是全程零输入，不填则运行时会询问一次。</li>
             </ul>
         </div>
     </div>
@@ -426,17 +425,16 @@
             {
                 name: "install-singbox-auto.sh",
                 title: "Sing-box 自动版（无人值守）",
-                desc: "在双栈版基础上改造：协议固定为 VLESS Reality + Hysteria2 并共用同一端口；检测到公网 IPv6 自动开启；节点名自动生成；检测到已装旧版会自动卸载重装。适合批量部署。",
+                desc: "全程零输入部署：协议、端口、节点名均由命令行参数决定，检测到公网 IPv6 自动开启双栈，检测到旧版自动卸载重装。",
                 recommend: true,
                 badge: "🤖无人值守",
                 note: {
                     title: "温馨提示",
-                    cmd: "bash .../tmp/install-singbox-auto.sh 8443",
+                    cmd: "bash /tmp/install-singbox-auto.sh all 8443",
                     lines: [
-                        "刚复制的命令还差一个端口号。在末尾补上你要用的端口再执行，才是全程零输入。",
-                        "不填端口也能跑，只是运行时会询问一次。",
-                        "两个协议共用同一端口，防火墙需同时放行 TCP 与 UDP",
-                        "参考下面命令展示"
+                        "命令末尾需补端口号，`all` 写在端口前面：`all 端口` = 全部协议，只写端口 = 仅 VLESS Reality。",
+                        "端口放最后，例如 8443；不填也能跑，运行时会询问一次。",
+                        "带 `all` 时两协议共用该端口，防火墙需同时放行 TCP 与 UDP。"
                     ]
                 }
             },

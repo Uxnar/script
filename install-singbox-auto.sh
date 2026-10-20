@@ -5,7 +5,9 @@ SCRIPT_VERSION="v2610151757"
 export SCRIPT_VERSION
 # 由 install-singbox-SAN-v4v6.sh 改造而来的半无人值守版本:
 #   1) 端口改为命令行参数(可省略,省略则交互输入一次)
-#   2) 协议固定为 VLESS Reality + Hysteria2,不再询问
+#   2) 协议按命令行参数决定:
+#        - 不带 all  : 只装 VLESS Reality
+#        - 带 all    : 装 VLESS Reality + Hysteria2
 #   3) 两个协议复用同一个端口:VLESS 占 TCP,Hysteria2 占 UDP,套接字不同所以不冲突
 #   4) 检测到公网 IPv6 即自动开启双栈节点,不再询问
 #   5) 节点名称自动生成:auto-<v4前两段>,v6 节点加 -v6 后缀
@@ -19,9 +21,13 @@ err()  { echo -e "\033[1;31m[ERR]\033[0m $*" >&2; }
 # 半无人值守入口
 # ---------------------------------------------------------------------
 # 用法:
-#   bash install-singbox-auto.sh 8443          # 带端口运行,全程零输入
-#   bash install-singbox-auto.sh --port 8443   # 同上
-#   bash install-singbox-auto.sh               # 交互输入端口
+#   bash install-singbox-auto.sh 8443            # 只装 VLESS Reality,端口 8443
+#   bash install-singbox-auto.sh all 8443        # 装全部协议(VLESS + HY2),端口 8443
+#   bash install-singbox-auto.sh --port 8443     # 只装 VLESS Reality
+#   bash install-singbox-auto.sh all --port 8443 # 装全部协议
+#   bash install-singbox-auto.sh                 # 交互输入端口,只装 VLESS Reality
+#
+# 注意: all 必须写在端口前面;端口永远放在最后。
 #
 # 可选环境变量:
 #   CUSTOM_IP=1.2.3.4      指定节点连接地址(默认自动探测公网 IPv4)
@@ -30,10 +36,11 @@ err()  { echo -e "\033[1;31m[ERR]\033[0m $*" >&2; }
 #   ENABLE_V6=false        强制关闭 IPv6 节点(默认检测到就开)
 #
 # 端口说明:
-#   VLESS Reality 与 Hysteria2 复用同一个端口号。
+#   --all 模式下 VLESS Reality 与 Hysteria2 复用同一个端口号。
 #   VLESS Reality 监听 TCP,Hysteria2 监听 UDP(QUIC),
 #   两者是不同套接字,同一端口号不会冲突。
 #   防火墙需要同时放行该端口的 TCP 和 UDP。
+#   不带 all 时只有 VLESS Reality,只需放行 TCP。
 #
 # 节点名称规则:
 #   IPv4 节点: auto-<公网IPv4第一段>-<第二段>      例: auto-45-67
@@ -41,9 +48,12 @@ err()  { echo -e "\033[1;31m[ERR]\033[0m $*" >&2; }
 # =====================================================================
 
 usage() {
-    echo "用法: bash $0 [端口号] [--port 端口号]"
-    echo "  端口号    1-65535,VLESS Reality 与 Hysteria2 共用此端口(TCP+UDP)"
-    echo "  --port N 显式指定端口"
+    echo "用法: bash $0 [all] <端口号>"
+    echo "       bash $0 [all] --port <端口号>"
+    echo "  all       放在端口之前:安装全部协议(VLESS Reality + Hysteria2)"
+    echo "            不带 all:只安装 VLESS Reality"
+    echo "  端口号    1-65535,必须放在最后;all 模式下 VLESS 与 HY2 共用此端口(TCP+UDP)"
+    echo "  --port N  显式指定端口"
     echo "  环境变量  CUSTOM_IP / REALITY_SNI / NODE_NAME / ENABLE_V6"
 }
 
@@ -57,9 +67,15 @@ ask() {
 }
 
 # ---- 解析命令行参数 ----
+# all 表示安装全部协议,必须出现在端口之前;端口始终是最后一个参数
 PORT=""
+ALL_PROTOCOLS=false
 while [ $# -gt 0 ]; do
     case "$1" in
+        all|--all|-a)
+            ALL_PROTOCOLS=true
+            shift
+            ;;
         --port)
             PORT="${2:-}"
             if [ $# -ge 2 ]; then shift 2; else shift; fi
@@ -73,18 +89,42 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         *)
-            # 第一个裸数字参数当作端口
-            if [ -z "$PORT" ] && [[ "${1:-}" =~ ^[0-9]+$ ]]; then
+            if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
+                # 裸数字参数当作端口(后出现的覆盖先出现的,保证「端口在最后」生效)
                 PORT="$1"
+                shift
+            else
+                # 兼容历史写法:逗号分隔,如 all,8443
+                case "$1" in
+                    *,*)
+                        _ifs="$IFS"; IFS=','
+                        for tok in $1; do
+                            case "$tok" in
+                                all|--all|-a) ALL_PROTOCOLS=true ;;
+                                *[!0-9]*) ;;
+                                *) [ -n "$tok" ] && PORT="$tok" ;;
+                            esac
+                        done
+                        IFS="$_ifs"
+                        shift
+                        ;;
+                    *)
+                        warn "忽略无法识别的参数: $1"
+                        shift
+                        ;;
+                esac
             fi
-            shift
             ;;
     esac
 done
 
 # ---- 端口校验 ----
 if [ -z "$PORT" ]; then
-    PORT="$(ask "请输入端口号(1-65535,VLESS 与 Hysteria2 将共用此端口): " "")"
+    if $ALL_PROTOCOLS; then
+        PORT="$(ask "请输入端口号(1-65535,VLESS 与 Hysteria2 将共用此端口): " "")"
+    else
+        PORT="$(ask "请输入端口号(1-65535,VLESS Reality): " "")"
+    fi
 fi
 
 if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
@@ -99,7 +139,11 @@ if [ "$PORT" -lt 1024 ]; then
     warn "端口 $PORT 是系统保留端口(<1024),请确认没有其它服务占用"
 fi
 
-info "入口端口: $PORT (VLESS Reality 与 Hysteria2 共用,TCP+UDP)"
+if $ALL_PROTOCOLS; then
+    info "入口端口: $PORT (VLESS Reality 与 Hysteria2 共用,TCP+UDP)"
+else
+    info "入口端口: $PORT (仅 VLESS Reality,TCP)"
+fi
 
 # -----------------------
 # 检测系统类型与架构
@@ -414,12 +458,19 @@ case "$PRECHECK_V6_RESULT" in
 esac
 
 # -----------------------
-# 协议选择:固定启用 VLESS Reality + Hysteria2,不再交互
+# 协议选择:由命令行 all 参数决定,不再交互
+#   带 all -> VLESS Reality + Hysteria2
+#   不带   -> 仅 VLESS Reality
 select_protocols() {
     ENABLE_SS=false
     ENABLE_TUIC=false
-    ENABLE_HY2=true
     ENABLE_REALITY=true
+
+    if $ALL_PROTOCOLS; then
+        ENABLE_HY2=true
+    else
+        ENABLE_HY2=false
+    fi
 
     mkdir -p /etc/sing-box
     cat > /etc/sing-box/.protocols <<EOF
@@ -429,9 +480,14 @@ ENABLE_TUIC=$ENABLE_TUIC
 ENABLE_REALITY=$ENABLE_REALITY
 EOF
 
-    info "已启用协议:"
-    echo "  - Hysteria2 (HY2)"
-    echo "  - VLESS Reality"
+    if $ALL_PROTOCOLS; then
+        info "已启用协议(全部):"
+        echo "  - VLESS Reality"
+        echo "  - Hysteria2 (HY2)"
+    else
+        info "已启用协议(仅 VLESS Reality,如需全部协议请加 all 参数):"
+        echo "  - VLESS Reality"
+    fi
 
     export ENABLE_SS
     export ENABLE_HY2
@@ -530,7 +586,11 @@ mv /etc/sing-box/.config_cache.tmp /etc/sing-box/.config_cache || true
 # 配置端口和密码
 # VLESS Reality 与 Hysteria2 共用同一个端口,不再逐个询问
 get_config() {
-    info "开始配置端口和密码(共用端口 $PORT)..."
+    if $ENABLE_HY2; then
+        info "开始配置端口和密码(共用端口 $PORT)..."
+    else
+        info "开始配置端口和密码(端口 $PORT)..."
+    fi
 
     if $ENABLE_HY2; then
         PORT_HY2=$PORT
@@ -1044,13 +1104,24 @@ info "协议链接已保存到: /etc/sing-box/uris.txt"
 
 echo ""
 echo ""
-info "🔥 防火墙放行(VLESS 走 TCP、Hysteria2 走 UDP,同一个端口两种协议都要开):"
-if [ "$OS" = "alpine" ]; then
-    echo "   Alpine 默认无防火墙,通常无需操作;如有 iptables 规则需放行 $PORT/tcp 与 $PORT/udp"
+if $ENABLE_HY2; then
+    info "🔥 防火墙放行(VLESS 走 TCP、Hysteria2 走 UDP,同一个端口两种协议都要开):"
+    if [ "$OS" = "alpine" ]; then
+        echo "   Alpine 默认无防火墙,通常无需操作;如有 iptables 规则需放行 $PORT/tcp 与 $PORT/udp"
+    else
+        echo "   ufw:         ufw allow $PORT/tcp && ufw allow $PORT/udp"
+        echo "   firewalld:   firewall-cmd --permanent --add-port=$PORT/tcp --add-port=$PORT/udp && firewall-cmd --reload"
+        echo "   iptables:    iptables -A INPUT -p tcp --dport $PORT -j ACCEPT; iptables -A INPUT -p udp --dport $PORT -j ACCEPT"
+    fi
 else
-    echo "   ufw:         ufw allow $PORT/tcp && ufw allow $PORT/udp"
-    echo "   firewalld:   firewall-cmd --permanent --add-port=$PORT/tcp --add-port=$PORT/udp && firewall-cmd --reload"
-    echo "   iptables:    iptables -A INPUT -p tcp --dport $PORT -j ACCEPT; iptables -A INPUT -p udp --dport $PORT -j ACCEPT"
+    info "🔥 防火墙放行(仅 VLESS Reality,只需 TCP):"
+    if [ "$OS" = "alpine" ]; then
+        echo "   Alpine 默认无防火墙,通常无需操作;如有 iptables 规则需放行 $PORT/tcp"
+    else
+        echo "   ufw:         ufw allow $PORT/tcp"
+        echo "   firewalld:   firewall-cmd --permanent --add-port=$PORT/tcp && firewall-cmd --reload"
+        echo "   iptables:    iptables -A INPUT -p tcp --dport $PORT -j ACCEPT"
+    fi
 fi
 echo ""
 info "🔧 管理命令:"
