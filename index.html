@@ -440,6 +440,22 @@
                 }
             },
             {
+                name: "install-cftun.sh",
+                title: "Argo 临时隧道（增量）",
+                desc: "给已装好的 sing-box 追加一条 VLESS+WS 入站与 Cloudflare 临时隧道，原有 Reality / HY2 节点原封不动。需先部署任意一个 Sing-box 脚本。",
+                badge: "🧩增量",
+                note: {
+                    title: "使用说明",
+                    cmd: "cftun",
+                    lines: [
+                        "前提：机器上已有 sing-box（先跑任意一个 Sing-box 脚本）。",
+                        "临时域名在隧道重启后会变，届时执行 `cftun` 选 2 重新生成链接。",
+                        "想让 sb 面板生成链接时自动带上 argo 段：`bash install-cftun.sh --hook-sb`。",
+                        "Reality / HY2 / TUIC 无法套 CDN，本脚本走的是独立的 WebSocket 入站。"
+                    ]
+                }
+            },
+            {
                 name: "zzj.sh",
                 title: "中转机脚本",
                 desc: "线路中转机专用，需配合已部署好的落地机一同使用。"

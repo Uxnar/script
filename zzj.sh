@@ -56,9 +56,39 @@ fi
 # ==========================================
 # 2. 注册快捷指令
 # ==========================================
-if [ ! -f "/usr/local/bin/zzj" ]; then
-    curl -fsSL https://raw.githubusercontent.com/QsSama-W/sbox/refs/heads/main/zzj.sh -o /usr/local/bin/zzj
-    chmod +x /usr/local/bin/zzj
+ZZJ_BIN="/usr/local/bin/zzj"
+
+# 自身就是 zzj.sh 时直接自注册,不依赖网络
+register_zzj() {
+    local self
+    self="$(readlink -f "$0" 2>/dev/null || echo "$0")"
+    if [ -s "$self" ] && grep -q "Realm 中转管理" "$self" 2>/dev/null; then
+        if [ "$self" != "$ZZJ_BIN" ]; then
+            cp -f "$self" "$ZZJ_BIN" || return 1
+        fi
+        chmod +x "$ZZJ_BIN" && return 0
+    fi
+    # 兜底:从本仓库拉取(支持镜像前缀)
+    local url="${SB_MIRROR:-}https://raw.githubusercontent.com/Uxnar/script/main/zzj.sh"
+    if curl -fsSL --connect-timeout 10 --max-time 60 "$url" -o "$ZZJ_BIN" 2>/dev/null && [ -s "$ZZJ_BIN" ]; then
+        chmod +x "$ZZJ_BIN" && return 0
+    fi
+    return 1
+}
+
+# 文件存在但为空/不可执行时也要重新注册(历史版本会留下空文件)
+if [ ! -s "$ZZJ_BIN" ] || [ ! -x "$ZZJ_BIN" ]; then
+    rm -f "$ZZJ_BIN"
+    if register_zzj; then
+        echo "✓ 快捷指令已注册: 终端输入 zzj 打开面板"
+        if ! command -v zzj >/dev/null 2>&1; then
+            echo "! 当前 shell 的 PATH 不含 /usr/local/bin,先执行 hash -r,仍不行则:"
+            echo "  export PATH=\$PATH:/usr/local/bin"
+        fi
+    else
+        echo "! 快捷指令注册失败,请手动执行:"
+        echo "  cp $(readlink -f "$0" 2>/dev/null || echo "$0") /usr/local/bin/zzj && chmod +x /usr/local/bin/zzj"
+    fi
 fi
 
 # ==========================================

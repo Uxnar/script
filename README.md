@@ -13,6 +13,7 @@
 | `install-singbox-lite-SAN.sh` | 在基础版之上为自签证书补上 SAN 字段 | 同上 |
 | `install-singbox-SAN-v4v6.sh` | 推荐。含 SAN，支持 IPv4 / IPv6 双栈，已隐藏 SS 与 TUIC | HY2 / VLESS Reality |
 | `install-singbox-auto.sh` | 半无人值守版。端口走命令行参数，全程零输入，适合批量部署 | 同上 |
+| `install-cftun.sh` | 增量版。给已装好的 sing-box 追加 Argo 临时隧道，不重装、不动原有节点 | VLESS + WS / Cloudflare Tunnel |
 | `zzj.sh` | 中转机脚本（基于 Realm 做端口转发） | 端口转发 |
 
 > SAN = 证书的主题备用名称（Subject Alternative Name）。现在的 TLS 客户端已不再认 CN，缺 SAN 的证书会被判定为不合法，HY2 需要它。
@@ -107,9 +108,54 @@ curl -fsSL https://raw.githubusercontent.com/Uxnar/script/main/install-singbox-a
 ufw allow 8443/tcp && ufw allow 8443/udp
 ```
 
+## Argo 临时隧道（install-cftun.sh）
+
+给**已经装好 sing-box** 的机器追加一条能走 CDN 的节点，不重装、不覆盖原有 Reality / HY2。
+
+原理：在本机开一个只监听 `127.0.0.1` 的 VLESS+WS 入站，用 `cloudflared` 的临时隧道（`*.trycloudflare.com`）把它暴露到公网。源站不用开任何入站端口，也不需要公网 IP 或独立的 443。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Uxnar/script/main/install-cftun.sh -o /tmp/install.sh && bash /tmp/install.sh
+```
+
+装完直接打印 `vless://` 链接，之后输入 `cftun` 打开管理面板：
+
+| 选项 | 作用 |
+| --- | --- |
+| 1 | 查看 / 刷新链接 |
+| 2 | 重新拉起隧道（换新域名） |
+| 3 | 查看状态 |
+| 4 / 5 | 停止 / 启动隧道 |
+| 6 | 重启 sing-box |
+| 7 | 卸载 Argo 隧道 |
+
+**uris.txt 的行为**：脚本在 `/etc/sing-box/uris.txt` 末尾维护一个带标记的 argo 段（`# >>> argo-cftun >>>` 到 `# <<< argo-cftun <<<`），刷新时只替换这一段，上方的直连链接原样保留，刷多少次也只会有一份。
+
+但 sb 面板生成链接时是整份覆盖这个文件，argo 段会被冲掉。需要它一直在的话，装完再执行一次：
+
+```bash
+bash /tmp/install.sh --hook-sb
+```
+
+这会给 sb 的 `generate_uris` 加一行 `cftun --emit`（带 `# cftun-hook` 标记，幂等，语法校验失败自动回滚）。`--unhook-sb` 可撤销，不加则完全不碰 sb。
+
+**注意**
+
+- 只能承载 HTTP / WebSocket。**Reality、HY2、TUIC 套不上 CDN**，所以这条隧道是独立入站，不是把原节点转成 CDN 节点。
+- 临时域名在隧道每次重启后都会变，链接随之失效，用 `cftun` 选 2 重新生成。
+- 重装 sing-box 会重写 `config.json`，WS 入站会丢，重跑一次本脚本即可。
+
+卸载（不影响其它节点）：
+
+```bash
+bash /tmp/install.sh --uninstall
+```
+
 ## 中转机（zzj.sh）
 
 基于 Realm 的端口转发管理，装完输入 `zzj` 打开菜单：添加转发规则（本机监听端口 → 落地机 vless 地址）、查看规则、删除规则、清空、卸载。配置文件是 `/etc/realm/config.toml`。
+
+> 旧版的快捷指令注册指向了一个失效地址，`/usr/local/bin/zzj` 可能残留成空文件，导致输入 `zzj` 没反应。现在改为优先自复制、兜底从本仓库拉取，空文件会自动重建——重跑一次脚本即可修好。
 
 ## 协议与端口
 
@@ -127,3 +173,9 @@ sb   # 选择「卸载 sing-box」
 ```
 
 会停止并移除服务、配置、证书、链接文件以及 `sb` 命令本身。
+
+如果装过 Argo 隧道，先移除它再卸载 sing-box：
+
+```bash
+bash /tmp/install.sh --uninstall   # install-cftun.sh
+```
