@@ -449,6 +449,7 @@
                     cmd: "cftun",
                     lines: [
                         "前提：机器上已有 sing-box（先跑任意一个 Sing-box 脚本）。",
+                        "面板顶部显示脚本与 cloudflared 的本地 / 远端版本，7 更新 cloudflared、8 更新脚本。",
                         "临时域名在隧道重启后会变，届时执行 `cftun` 选 2 重新生成链接。",
                         "想让 sb 面板生成链接时自动带上 argo 段：`bash install-cftun.sh --hook-sb`。",
                         "Reality / HY2 / TUIC 无法套 CDN，本脚本走的是独立的 WebSocket 入站。"
@@ -468,6 +469,13 @@
             const cur = window.location.href.split('?')[0].split('#')[0];
             return cur.endsWith('/') ? cur : cur.substring(0, cur.lastIndexOf('/') + 1);
         })();
+
+        /* 每次生成命令都换一个随机参数，绕开 CDN 与浏览器对静态文件的长缓存。
+           链接本身就是版本载体，加了 ?v= 之后每次都能取到源站的最新文件。 */
+        const cacheToken = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+        const buildCommand = (item) =>
+            `${prefixCmd} curl -k -sL -H 'Cache-Control: no-cache' ${baseUrl}${item.name}?v=${cacheToken()} -o /tmp/${item.name} && bash /tmp/${item.name}`;
 
         const list = document.getElementById('script-list');
 
@@ -523,7 +531,7 @@
         }
 
         scripts.forEach((item, i) => {
-            const fullCommand = `${prefixCmd} curl -k -sL ${baseUrl}${item.name} -o /tmp/${item.name} && bash /tmp/${item.name}`;
+            const displayCommand = buildCommand(item);
 
             const card = document.createElement('article');
             card.className = 'item' + (item.recommend ? ' featured' : '');
@@ -535,6 +543,7 @@
                 b.type = 'button';
                 b.textContent = '复制';
                 b.onclick = () => {
+                    const fullCommand = buildCommand(item);
                     const done = () => {
                         b.textContent = '已复制';
                         b.classList.add('copied');
@@ -606,7 +615,7 @@
 
             const cmd = document.createElement('div');
             cmd.className = 'cmd no-scrollbar';
-            cmd.textContent = fullCommand;
+            cmd.textContent = displayCommand;
 
             term.append(bar, cmd);
 

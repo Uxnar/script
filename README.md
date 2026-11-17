@@ -118,16 +118,26 @@ ufw allow 8443/tcp && ufw allow 8443/udp
 curl -fsSL https://raw.githubusercontent.com/Uxnar/script/main/install-cftun.sh -o /tmp/install.sh && bash /tmp/install.sh
 ```
 
-装完直接打印 `vless://` 链接，之后输入 `cftun` 打开管理面板：
+拉下来还是旧版本的话，给 URL 加个随机参数强制回源（CDN 会按完整 URL 缓存）：
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/Uxnar/script/main/install-cftun.sh?v=$(date +%s)" -o /tmp/install.sh && bash /tmp/install.sh
+```
+
+装完直接打印 `vless://` 链接，之后输入 `cftun` 打开管理面板（顶部显示脚本版本、cloudflared 本地与远端版本）：
 
 | 选项 | 作用 |
 | --- | --- |
 | 1 | 查看 / 刷新链接 |
 | 2 | 重新拉起隧道（换新域名） |
-| 3 | 查看状态 |
+| 3 | 查看状态（含脚本与 cloudflared 的本地 / 远端版本对比） |
 | 4 / 5 | 停止 / 启动隧道 |
 | 6 | 重启 sing-box |
-| 7 | 卸载 Argo 隧道 |
+| 7 | 强制更新 cloudflared（拉官方最新版，重启隧道，域名会变） |
+| 8 | 强制更新脚本（只替换 `cftun` 命令与链接，不重启隧道，域名不变） |
+| 9 | 卸载 Argo 隧道 |
+
+远端版本查询结果缓存 10 分钟，避免每次进面板都联网。断网时显示「未知」，不影响其它功能。
 
 **uris.txt 的行为**：脚本在 `/etc/sing-box/uris.txt` 末尾维护一个带标记的 argo 段（`# >>> argo-cftun >>>` 到 `# <<< argo-cftun <<<`），刷新时只替换这一段，上方的直连链接原样保留，刷多少次也只会有一份。
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # install-cftun.sh
-SCRIPT_VERSION="v2611172310"
+SCRIPT_VERSION="v2611172355"
 export SCRIPT_VERSION
+# 自更新用的远端地址(主:自有站点 / 备:GitHub raw)
+SELF_URL="https://script.rr.kg/install-cftun.sh"
+SELF_URL_BACKUP="https://raw.githubusercontent.com/Uxnar/script/main/install-cftun.sh"
 # 给已装好的 sing-box 追加一条 Argo 临时隧道（Cloudflare Quick Tunnel）节点。
 #
 # 做的事情:
@@ -483,6 +486,10 @@ info() { echo -e "\033[1;34m[INFO]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[WARN]\033[0m $*"; }
 err()  { echo -e "\033[1;31m[ERR]\033[0m $*" >&2; }
 
+SCRIPT_VERSION="__CFTUN_VERSION__"
+SELF_URL="https://script.rr.kg/install-cftun.sh"
+SELF_URL_BACKUP="https://raw.githubusercontent.com/Uxnar/script/main/install-cftun.sh"
+
 SB_DIR="/etc/sing-box"
 CONFIG_PATH="$SB_DIR/config.json"
 CACHE_FILE="$SB_DIR/.cftun_cache"
@@ -491,6 +498,7 @@ CF_BIN="/usr/local/bin/cloudflared"
 CF_WRAPPER="/usr/local/bin/cftun-run"
 CF_LOG="/var/log/cloudflared-argo.log"
 SB_URIS="$SB_DIR/uris.txt"
+VER_CACHE="$SB_DIR/.cftun_vercache"
 MARK_B="# >>> argo-cftun >>>"
 MARK_E="# <<< argo-cftun <<<"
 WS_TAG="cftun-ws-in"
@@ -614,6 +622,94 @@ write_uri() {
     sync_uris
 }
 
+# ---------- 版本信息 ----------
+cf_local_ver() {
+    if [ -x "$CF_BIN" ]; then
+        "$CF_BIN" --version 2>/dev/null | awk '{print $3; exit}'
+    else
+        echo "未安装"
+    fi
+}
+
+fetch_text() {
+    # -k 对有效证书无影响,顺手兼容自签/劫持场景;单次请求,失败即回空
+    curl -fsSLk --connect-timeout 3 --max-time 6 \
+        -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$1" 2>/dev/null
+}
+
+# 给 URL 加一次性参数,绕开 CDN / 源站对静态文件的长缓存
+bust_url() {
+    case "$1" in
+        *\?*) printf '%s&t=%s' "$1" "$(date +%s)$RANDOM" ;;
+        *)    printf '%s?t=%s'   "$1" "$(date +%s)$RANDOM" ;;
+    esac
+}
+
+cf_remote_ver() {
+    local v
+    v=$(curl -sIL --connect-timeout 3 --max-time 5 -o /dev/null -w '%{url_effective}' \
+            https://github.com/cloudflare/cloudflared/releases/latest 2>/dev/null \
+        | sed -n 's|.*/tag/||p')
+    if [ -z "$v" ]; then
+        v=$(curl -s --connect-timeout 3 --max-time 5 \
+                https://api.github.com/repos/cloudflare/cloudflared/releases/latest 2>/dev/null \
+            | jq -r '.tag_name // empty' 2>/dev/null || true)
+    fi
+    printf '%s' "${v:-未知}"
+}
+
+script_remote_ver() {
+    local v
+    v=$(fetch_text "$(bust_url "$SELF_URL")" | sed -n 's/^SCRIPT_VERSION="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' | head -n1)
+    printf '%s' "${v:-未知}"
+}
+
+# 远端版本缓存,10 分钟内不重复联网
+read_ver_cache() {
+    [ -f "$VER_CACHE" ] || return 1
+    local ts
+    ts=$(sed -n 's/^TS=//p' "$VER_CACHE" 2>/dev/null | head -n1)
+    case "$ts" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    [ $(( $(date +%s) - ts )) -lt 600 ] || return 1
+    cat "$VER_CACHE"
+}
+
+write_ver_cache() {
+    {
+        echo "TS=$(date +%s)"
+        echo "CF=$1"
+        echo "SB=$2"
+    } > "$VER_CACHE" 2>/dev/null || true
+    chmod 600 "$VER_CACHE" 2>/dev/null || true
+}
+
+R_CF=""
+R_SB=""
+refresh_remote_ver() {
+    local c
+    c=$(read_ver_cache 2>/dev/null || true)
+    if [ -n "$c" ]; then
+        R_CF=$(printf '%s\n' "$c" | sed -n 's/^CF=//p' | head -n1)
+        R_SB=$(printf '%s\n' "$c" | sed -n 's/^SB=//p' | head -n1)
+        if [ -n "$R_CF" ] && [ -n "$R_SB" ]; then return 0; fi
+    fi
+    R_CF=$(cf_remote_ver)
+    R_SB=$(script_remote_ver)
+    write_ver_cache "$R_CF" "$R_SB"
+    return 0
+}
+
+detect_arch() {
+    case "$(uname -m)" in
+        x86_64|amd64) echo amd64 ;;
+        *aarch64*|*armv8*) echo arm64 ;;
+        armv7l|armv6l) echo arm ;;
+        *) echo amd64 ;;
+    esac
+}
+
 action_uri() {
     load_cache
     refresh_host
@@ -651,16 +747,143 @@ action_rebuild() {
     cat "$URI_FILE"
 }
 
+# 强制更新 cloudflared 到官方最新版(会重启隧道,域名会变)
+action_update_cloudflared() {
+    local arch url tmp ver mirror
+    arch=$(detect_arch)
+    url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}"
+    tmp="/tmp/cloudflared.upd.$$"
+    mirror="${CF_MIRROR:-${SB_MIRROR:-}}"
+
+    info "当前版本: $(cf_local_ver)"
+    info "下载 cloudflared (linux-$arch) ..."
+    if ! curl -fL --connect-timeout 15 --max-time 300 -o "$tmp" "${mirror}${url}" 2>/dev/null; then
+        warn "直连下载失败,尝试 ghfast 镜像"
+        if ! curl -fL --connect-timeout 15 --max-time 300 -o "$tmp" "https://ghfast.top/${url}" 2>/dev/null; then
+            err "cloudflared 下载失败"
+            rm -f "$tmp"
+            return 1
+        fi
+    fi
+
+    chmod +x "$tmp"
+    if ! "$tmp" --version >/dev/null 2>&1; then
+        err "下载的文件无法执行,可能架构不匹配"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    ver=$("$tmp" --version 2>/dev/null | awk '{print $3; exit}')
+    mv -f "$tmp" "$CF_BIN"
+    chmod +x "$CF_BIN"
+    rm -f "$VER_CACHE"
+
+    info "已替换为 $ver,重启隧道..."
+    : > "$CF_LOG"
+    if ! svc_restart >/dev/null 2>&1; then
+        err "服务重启失败,查看 $CF_LOG"
+        return 1
+    fi
+
+    load_cache
+    local i h=""
+    for i in $(seq 1 30); do
+        h=$(get_host)
+        if [ -n "$h" ]; then break; fi
+        sleep 2
+    done
+    if [ -z "$h" ]; then
+        err "未拿到新域名,日志尾部:"
+        tail -n 15 "$CF_LOG" 2>/dev/null || true
+        return 1
+    fi
+
+    CFTUN_HOST="$h"
+    save_cache
+    write_uri
+    info "cloudflared 已更新到 $ver,新域名: $CFTUN_HOST"
+    echo ""
+    cat "$URI_FILE"
+}
+
+# 强制更新本脚本(不动 WS 入站与隧道,域名不变)
+action_update_script() {
+    local u tmp new_ver=""
+    tmp="/tmp/install-cftun.upd.$$"
+    info "当前脚本版本: $SCRIPT_VERSION"
+
+    for u in "$SELF_URL" "$SELF_URL_BACKUP"; do
+        info "检查: $u"
+        if fetch_text "$(bust_url "$u")" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+            new_ver=$(sed -n 's/^SCRIPT_VERSION="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$tmp" | head -n1)
+            if [ -n "$new_ver" ] && bash -n "$tmp" 2>/dev/null; then
+                info "远端版本: $new_ver"
+                break
+            fi
+            new_ver=""
+        fi
+    done
+
+    if [ -z "$new_ver" ]; then
+        err "拉取远端脚本失败(地址不可达或内容异常)"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    if [ "$new_ver" = "$SCRIPT_VERSION" ]; then
+        info "已是最新版本,无需更新"
+        rm -f "$tmp"
+        rm -f "$VER_CACHE"
+        return 0
+    fi
+
+    # 版本号格式 v+YYMMDDHHMM,等长时可安全做字典序比较,避免把本地新版本降级
+    if [ ${#new_ver} -eq ${#SCRIPT_VERSION} ] && [[ "$new_ver" < "$SCRIPT_VERSION" ]]; then
+        warn "远端版本($new_ver)低于本地($SCRIPT_VERSION),可能远端尚未同步"
+        warn "已跳过更新。确实需要回退请手动指定旧脚本执行"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    info "更新中(仅替换命令与链接,不重启隧道)..."
+    if CFTUN_SKIP_RESTART=1 bash "$tmp"; then
+        rm -f "$tmp"
+        rm -f "$VER_CACHE"
+        info "✅ 脚本已更新: $SCRIPT_VERSION -> $new_ver"
+        warn "cftun 命令已替换,请退出后重新输入 cftun 使用新面板"
+    else
+        err "更新执行失败,原 cftun 命令未受影响"
+        rm -f "$tmp"
+        return 1
+    fi
+}
+
 action_status() {
     load_cache
     refresh_host
+    refresh_remote_ver
+
+    local lcf lsb svc ws_cnt up_tag
+    lcf=$(cf_local_ver)
+    lsb="$SCRIPT_VERSION"
+    if [ "$OS" = "alpine" ]; then
+        svc=$(rc-service "$SVC_NAME" status 2>&1 | head -n1)
+    else
+        svc=$(systemctl is-active "$SVC_NAME" 2>/dev/null || echo inactive)
+    fi
+    ws_cnt=$(jq -r --arg t "$WS_TAG" '[.inbounds[]? | select(.tag==$t)] | length' "$CONFIG_PATH" 2>/dev/null || echo 0)
+
+    if [ "$lsb" = "$R_SB" ]; then up_tag="已最新"; else up_tag="可更新"; fi
+    if [ "$lcf" = "$R_CF" ]; then cf_tag="已最新"; else cf_tag="可更新"; fi
+
     echo ""
-    echo "  二进制 : $([ -x "$CF_BIN" ] && "$CF_BIN" --version 2>/dev/null | head -n1 || echo 未安装)"
-    echo "  服务   : $([ "$OS" = "alpine" ] && rc-service "$SVC_NAME" status 2>&1 | head -n1 || systemctl is-active "$SVC_NAME" 2>/dev/null || echo inactive)"
-    echo "  域名   : ${CFTUN_HOST:-无}"
-    echo "  本地 WS: 127.0.0.1:${CFTUN_WS_PORT:-?}${CFTUN_WS_PATH:-}"
-    echo "  WS 入站: $(jq -r --arg t "$WS_TAG" '[.inbounds[] | select(.tag==$t)] | length' "$CONFIG_PATH" 2>/dev/null || echo 0) 条"
-    echo "  日志   : $CF_LOG"
+    echo "  脚本版本   : $lsb  (远端 $R_SB / $up_tag)"
+    echo "  cloudflared: $lcf  (远端 $R_CF / $cf_tag)"
+    echo "  服务       : $svc"
+    echo "  域名       : ${CFTUN_HOST:-无}"
+    echo "  本地 WS    : 127.0.0.1:${CFTUN_WS_PORT:-?}${CFTUN_WS_PATH:-}"
+    echo "  WS 入站    : $ws_cnt 条"
+    echo "  日志       : $CF_LOG"
 }
 
 action_uninstall() {
@@ -709,22 +932,37 @@ fi
 show_menu() {
     load_cache
     refresh_host
+    refresh_remote_ver
+
+    local svc lcf
+    lcf=$(cf_local_ver)
+    if [ "$OS" = "alpine" ]; then
+        svc=$(rc-service "$SVC_NAME" status 2>&1 | head -n1)
+    else
+        svc=$(systemctl is-active "$SVC_NAME" 2>/dev/null || echo inactive)
+    fi
+
     echo ""
-    echo "=========================="
+    echo "=============================="
     echo " Argo 临时隧道 (CFTun)"
-    echo "=========================="
-    echo "  域名: ${CFTUN_HOST:-未分配}"
-    echo "  本地: 127.0.0.1:${CFTUN_WS_PORT:-?}${CFTUN_WS_PATH:-}"
-    echo ""
+    echo "=============================="
+    echo "  脚本版本   : $SCRIPT_VERSION  (远端 $R_SB)"
+    echo "  cloudflared: $lcf  (远端 $R_CF)"
+    echo "  服务       : $svc"
+    echo "  域名       : ${CFTUN_HOST:-未分配}"
+    echo "  本地 WS    : 127.0.0.1:${CFTUN_WS_PORT:-?}${CFTUN_WS_PATH:-}"
+    echo "=============================="
     echo "1) 查看 / 刷新链接"
     echo "2) 重新拉起隧道(换新域名)"
     echo "3) 查看状态"
     echo "4) 停止隧道"
     echo "5) 启动隧道"
     echo "6) 重启 sing-box"
-    echo "7) 卸载 Argo 隧道"
+    echo "7) 强制更新 cloudflared"
+    echo "8) 强制更新脚本"
+    echo "9) 卸载 Argo 隧道"
     echo "0) 退出"
-    echo "=========================="
+    echo "=============================="
 }
 
 while true; do
@@ -743,7 +981,9 @@ while true; do
                 systemctl restart sing-box >/dev/null 2>&1 && info "sing-box 已重启" || warn "重启失败"
             fi
             ;;
-        7) action_uninstall ;;
+        7) action_update_cloudflared ;;
+        8) action_update_script ;;
+        9) action_uninstall ;;
         0) exit 0 ;;
         *) warn "无效选项: $opt" ;;
     esac
@@ -751,6 +991,8 @@ while true; do
 done
 CFTUN_EOF
 
+    # 把外层版本号写进内嵌脚本
+    sed -i "s|__CFTUN_VERSION__|$SCRIPT_VERSION|g" "$CFTUN_CMD"
     chmod +x "$CFTUN_CMD"
     info "✅ 管理命令已就绪,输入 cftun 打开面板"
 }
@@ -839,6 +1081,16 @@ fi
 # -----------------------
 # 主流程
 check_singbox
+
+# 自更新路径:只替换管理命令与链接,不动 WS 入站、不重启隧道(域名不变)
+if [ "${CFTUN_SKIP_RESTART:-0}" = "1" ]; then
+    info "仅更新管理命令与链接(跳过隧道重启)"
+    load_cache
+    write_uri || true
+    install_cftun_cmd
+    exit 0
+fi
+
 install_cloudflared
 
 load_cache
