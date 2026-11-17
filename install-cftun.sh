@@ -236,7 +236,7 @@ build_uri() {
     local host="$1" uuid="$2" path="$3" name="$4"
     local ep
     ep=$(url_encode_path "$path")
-    printf 'vless://%s@%s:443?encryption=none&security=tls&sni=%s&fp=chrome&alpn=h2%%2Chttp%%2F1.1&type=ws&host=%s&path=%s#%s' \
+    printf 'vless://%s@%s:443?encryption=none&security=tls&sni=%s&fp=chrome&alpn=http%%2F1.1&type=ws&host=%s&path=%s#%s' \
         "$uuid" "$host" "$host" "$host" "$ep" "$name"
 }
 
@@ -541,7 +541,7 @@ url_encode_path() { printf '%s' "$1" | sed 's|/|%2F|g'; }
 build_uri() {
     local host="$1" uuid="$2" path="$3" name="$4" ep
     ep=$(url_encode_path "$path")
-    printf 'vless://%s@%s:443?encryption=none&security=tls&sni=%s&fp=chrome&alpn=h2%%2Chttp%%2F1.1&type=ws&host=%s&path=%s#%s' \
+    printf 'vless://%s@%s:443?encryption=none&security=tls&sni=%s&fp=chrome&alpn=http%%2F1.1&type=ws&host=%s&path=%s#%s' \
         "$uuid" "$host" "$host" "$host" "$ep" "$name"
 }
 
