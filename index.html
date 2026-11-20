@@ -1,4 +1,4 @@
-<!--v202610202205-->
+<!--v202611202112-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -422,6 +422,24 @@
                 title: "Sing-box 双栈版（含 SAN）",
                 desc: "支持自动检测并创建 IPv4 / IPv6 双栈链路，检测到公网 IPv6 时会询问是否一并生成 v6 节点；仅提供 Hysteria2 与 VLESS Reality 两种协议。",
                 recommend: true
+            },
+            {
+                name: "install-singbox-SAN-v4v6-sni.sh",
+                title: "Sing-box 双栈版（SNI 自选）",
+                desc: "在双栈版基础上内置 20 个常用 SNI 候选池，VLESS Reality 与 Hysteria2 分开选择套用哪个域名；一路回车即用推荐项 swscan.apple.com。",
+                recommend: true,
+                badge: "🎯SNI自选",
+                note: {
+                    title: "SNI 选择说明",
+                    cmd: "bash /tmp/install-singbox-SAN-v4v6-sni.sh",
+                    lines: [
+                        "装完后先问 VLESS 的 SNI，再问 HY2 的 SNI，两者独立，互不影响。",
+                        "直接回车 = 推荐项 `swscan.apple.com`；输编号 = 从 20 个候选里挑。",
+                        "输 `0` 手动输入自定义域名，也可直接粘贴域名（含字母即按域名处理）。",
+                        "编号超范围会提示并回落推荐项，不会中断安装。",
+                        "HY2 的自签证书 CN / SAN 与链接里的 `sni=` 都跟随所选域名，不再固定 bing。"
+                    ]
+                }
             },
             {
                 name: "install-singbox-auto.sh",
