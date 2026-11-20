@@ -1,4 +1,4 @@
-<!--v202611202112-->
+<!--v202611202308-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -54,7 +54,6 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        /* 隐藏页面垂直滚动条，保留滚动能力 */
         html {
             -webkit-text-size-adjust: 100%;
             scrollbar-width: none;
@@ -75,7 +74,6 @@
         }
         body::-webkit-scrollbar { width: 0; height: 0; }
 
-        /* 隐藏横向滚动条但保留滚动能力 */
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
@@ -119,97 +117,168 @@
         }
         .pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
-        /* ---------- hero ---------- */
-        main { flex: 1; padding: 3rem 1.25rem 4rem; }
-        .wrap { max-width: 880px; margin: 0 auto; }
-        .hero { margin-bottom: 2.25rem; }
-        .eyebrow {
-            display: inline-flex; align-items: center; gap: 0.4rem;
-            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-            color: var(--accent);
-            background: var(--accent-soft);
-            border-radius: 999px;
-            padding: 0.25rem 0.7rem;
-            margin-bottom: 0.9rem;
+        /* ---------- 免责声明背景水印 ---------- */
+        .disc-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .9s ease, visibility 0s linear .9s;
         }
-        .hero h1 { font-size: 1.95rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1.3; }
-        .hero p { margin-top: 0.5rem; color: var(--muted); font-size: 0.95rem; max-width: 46rem; }
-
-        /* ---------- 折叠列表 ---------- */
-        #script-list {
+        .disc-bg.on {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity .9s ease;
+        }
+        .disc-bg-inner {
+            position: absolute;
+            inset: -4% 0;
             display: flex;
             flex-direction: column;
-            gap: 0.7rem;
+            justify-content: space-around;
+        }
+        .disc-bg-line {
+            white-space: nowrap;
+            font-size: clamp(13px, 1.9vw, 20px);
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            opacity: 0.075;
+            animation: discScroll linear infinite;
+            will-change: transform;
+        }
+        .disc-bg-line:nth-child(even) { animation-direction: reverse; }
+        @keyframes discScroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .disc-bg-line { animation: none; }
         }
 
-        .item {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            transition: box-shadow .2s, border-color .2s;
-        }
-        .item:hover { border-color: var(--border-2); }
-        .item.open { border-color: var(--border-2); box-shadow: var(--shadow-2); }
-        .item.featured { border-color: var(--rec-border); }
+        /* ---------- 双栏骨架 ---------- */
+        main { flex: 1; padding: 2.4rem 1.5rem 3rem; position: relative; z-index: 1; }
+        .wrap { max-width: 1120px; margin: 0 auto; }
 
-        .row {
-            display: flex;
+        .layout {
+            display: grid;
+            grid-template-columns: 296px minmax(0, 1fr);
+            gap: 2.5rem;
+            align-items: start;
+        }
+
+        /* 左：目录 */
+        .side { position: sticky; top: 4.8rem; }
+        .side-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 0 0.75rem;
+            margin-bottom: 0.55rem;
+        }
+        .nav { display: flex; flex-direction: column; gap: 2px; }
+        .nav-item {
+            display: grid;
+            grid-template-columns: 1.5rem minmax(0, 1fr) auto;
             align-items: center;
-            gap: 0.6rem;
-            padding: 0.55rem 1.15rem 0.55rem 0.8rem;
-            transition: background-color .15s;
-        }
-        .item:hover .row { background: var(--surface-2); }
-
-        .toggle {
-            flex: 1; min-width: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.4rem 0.25rem;
+            gap: 0.4rem;
+            width: 100%;
             font: inherit;
-            color: inherit;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            color: var(--muted);
             text-align: left;
             background: none;
             border: none;
-            border-radius: 8px;
+            border-left: 2px solid transparent;
+            border-radius: 0 9px 9px 0;
+            padding: 0.55rem 0.7rem 0.55rem 0.65rem;
             cursor: pointer;
+            transition: background-color .15s, color .15s, border-color .15s;
         }
-        .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-
-        /* 未展开指向标题（右），展开后旋转 90° 指向下方内容 */
-        .caret {
+        .nav-item:hover { background: var(--surface-2); color: var(--text); }
+        .nav-item.active {
+            background: var(--surface);
+            color: var(--text);
+            font-weight: 600;
+            border-left-color: var(--accent);
+            box-shadow: var(--shadow);
+        }
+        .nav-idx {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.7rem;
+            color: var(--muted);
+            opacity: 0.55;
+            letter-spacing: 0.02em;
+        }
+        .nav-item.active .nav-idx { opacity: 0.9; color: var(--accent); }
+        .nav-name {
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nav-tag {
             flex: none;
-            width: 0; height: 0;
-            border-top: 5px solid transparent;
-            border-bottom: 5px solid transparent;
-            border-left: 6px solid var(--muted);
-            transition: transform .25s ease;
+            font-size: 0.66rem;
+            font-weight: 500;
+            line-height: 1.5;
+            letter-spacing: 0.01em;
+            padding: 0 0.36rem;
+            border-radius: 4px;
+            color: var(--accent);
+            background: var(--accent-soft);
+            white-space: nowrap;
         }
-        .item.open .caret { transform: rotate(90deg); }
+        .nav-tag.hot { color: #fff; background: var(--rec-bg); }
+        .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        .row-title {
-            flex: 1; min-width: 0;
-            font-size: 0.98rem; font-weight: 600; letter-spacing: -0.01em;
+        /* 右：详情 */
+        .detail {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2rem 2.1rem 2.1rem;
+            min-height: 0;
         }
-
-        /* 0fr → 1fr 实现无需固定高度的展开动画 */
-        .panel {
-            display: grid;
-            grid-template-rows: 0fr;
-            transition: grid-template-rows .28s ease;
+        .detail.is-overview { padding: 2.7rem 2.2rem 2.5rem; }
+        .d-head {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
         }
-        .item.open .panel { grid-template-rows: 1fr; }
-        .panel-inner { overflow: hidden; min-height: 0; }
-        .panel-body { padding: 0 1.15rem 1.15rem; }
-        .panel-body .desc { margin: 0.55rem 0 0.9rem; }
-        .panel-body .term { margin-top: 0; }
-
+        .d-title {
+            font-size: 1.5rem;
+            font-weight: 650;
+            letter-spacing: -0.022em;
+            line-height: 1.32;
+        }
+        .rec {
+            flex: none;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #fff;
+            background: var(--rec-bg);
+            border: 1px solid var(--rec-border);
+            border-radius: 999px;
+            padding: 0.12rem 0.6rem;
+            white-space: nowrap;
+        }
+        .d-desc {
+            margin-top: 0.55rem;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
         .filechip {
             display: inline-block;
-            margin-top: 0.3rem;
+            margin-top: 0.85rem;
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 0.74rem;
             color: var(--muted);
@@ -218,40 +287,73 @@
             border-radius: 6px;
             padding: 0.05rem 0.4rem;
         }
-        .rec {
-            flex: none;
-            font-size: 0.72rem; font-weight: 600;
-            color: #fff;
-            background: var(--rec-bg);
-            border: 1px solid var(--rec-border);
-            border-radius: 999px;
-            padding: 0.12rem 0.6rem;
-            white-space: nowrap;
-        }
-        .desc { margin: 0.7rem 0 0.95rem; font-size: 0.9rem; color: var(--muted); }
 
-        /* ---------- note modal ---------- */
-        .sheet p.nline { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.6rem; }
-        .sheet p.nline:last-child { margin-bottom: 0; }
-        .sheet p.nline code { font-size: 0.82em; }
-        .sheet .ncmd {
-            display: block;
-            margin: 0.7rem 0;
-            padding: 0.7rem 0.8rem;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 0.78rem;
-            line-height: 1.65;
-            color: var(--term-text);
-            background: var(--term-bg);
-            border-radius: 9px;
+        /* ---------- 概览页 ---------- */
+        .detail.is-overview .d-head { justify-content: center; }
+        .ov-wrap { max-width: 650px; margin: 0 auto; text-align: center; }
+        .ov-title { font-size: 1.9rem; letter-spacing: -0.028em; }
+        .ov-tag {
+            flex: none;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.1rem 0.6rem;
             white-space: nowrap;
-            overflow-x: auto;
         }
-        .sheet .ncmd::before { content: "$ "; color: var(--term-muted); }
+        .ov-lead {
+            margin: 0.8rem auto 0;
+            max-width: 36rem;
+            font-size: 0.94rem;
+            color: var(--muted);
+        }
+        .ov-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.7rem;
+            margin-top: 1.8rem;
+        }
+        .ov-stat {
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 0.85rem 0.7rem;
+        }
+        .ov-k {
+            font-size: 0.66rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .ov-v {
+            margin-top: 0.3rem;
+            font-size: 0.86rem;
+            font-weight: 600;
+            line-height: 1.55;
+        }
+        .ov-h {
+            margin: 2.1rem 0 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .ov-note {
+            font-size: 0.86rem;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+        .ov-note code { font-size: 0.82em; }
+        .ov-foot { margin-top: 2rem; }
 
         /* ---------- terminal ---------- */
         .term {
-            margin-top: auto;
+            margin-top: 1.35rem;
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
@@ -289,18 +391,6 @@
         }
         .copy:hover { background: rgba(255,255,255,0.14); }
         .copy.copied { color: var(--dot-3); border-color: var(--dot-3); }
-
-        /* 折叠行内的复制按钮：浅色底上的变体 */
-        .copy.light {
-            color: var(--muted);
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            padding: 0.28rem 0.8rem;
-        }
-        .copy.light:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-        .copy.light.copied { color: var(--dot-3); border-color: var(--dot-3); background: transparent; }
-        /* 展开后收起行内复制按钮，交给终端里那个 */
-        .item.open .row-copy { display: none; }
         .cmd {
             padding: 0.85rem 0.9rem;
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -341,6 +431,69 @@
         .sheet p.sub:first-child { margin-top: 0; }
         .sheet ul { margin-left: 1.15rem; font-size: 0.85rem; color: var(--muted); }
         .sheet li { margin-bottom: 0.2rem; }
+        .sheet p.nline { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.6rem; }
+        .sheet p.nline:last-child { margin-bottom: 0; }
+        .sheet p.nline code { font-size: 0.82em; }
+        .sheet .ncmd {
+            display: block;
+            margin: 0.7rem 0;
+            padding: 0.7rem 0.8rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.78rem;
+            line-height: 1.65;
+            color: var(--term-text);
+            background: var(--term-bg);
+            border-radius: 9px;
+            white-space: nowrap;
+            overflow-x: auto;
+        }
+        .sheet .ncmd::before { content: "$ "; color: var(--term-muted); }
+
+        /* ---------- 免责声明 ---------- */
+        #disc-modal .sheet {
+            max-width: 620px;
+            padding: 2.2rem 2.3rem 2rem;
+        }
+        #disc-modal .sheet h2 {
+            font-size: 1.32rem;
+            margin-bottom: 1.35rem;
+            padding-right: 0;
+        }
+        .disc-body p {
+            font-size: 0.92rem;
+            color: var(--muted);
+            line-height: 1.9;
+            margin-bottom: 0.85rem;
+        }
+        .disc-body p:last-child { margin-bottom: 0; }
+        .disc-body strong { color: var(--text); font-weight: 600; }
+        .disc-actions {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 1.9rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .btn {
+            font: inherit;
+            font-size: 0.84rem;
+            font-weight: 500;
+            color: var(--muted);
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 0.48rem 1rem;
+            cursor: pointer;
+            transition: color .15s, border-color .15s, background-color .15s;
+        }
+        .btn:hover { color: var(--accent); border-color: var(--accent); }
+        .btn.primary {
+            color: #fff;
+            background: var(--accent);
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+        .btn.primary:hover { opacity: 0.88; color: #fff; }
         code {
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 0.85em;
@@ -350,54 +503,82 @@
             padding: 0.05rem 0.3rem;
         }
 
-        @media (max-width: 560px) {
+        /* ---------- 窄屏：目录转横向胶囊 ---------- */
+        @media (max-width: 880px) {
             header { padding: 0.75rem 1rem; gap: 0.5rem; }
             .pill { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
-            main { padding: 2rem 1rem 3rem; }
-            .hero h1 { font-size: 1.5rem; }
-            .row { padding: 0.5rem 0.9rem 0.5rem 0.6rem; gap: 0.45rem; }
-            .panel-body { padding: 0 0.9rem 0.9rem; }
-            .row-title { font-size: 0.93rem; }
-            .rec { padding: 0.12rem 0.5rem; font-size: 0.7rem; }
+            main { padding: 1.5rem 1.1rem 2.5rem; }
+            .layout { grid-template-columns: 1fr; gap: 0.9rem; }
+            .side { position: static; }
+            .side-label { display: none; }
+            .nav {
+                flex-direction: row;
+                gap: 0.4rem;
+                overflow-x: auto;
+                padding-bottom: 0.2rem;
+            }
+            .nav-item {
+                display: flex;
+                align-items: center;
+                gap: 0.35rem;
+                width: auto;
+                white-space: nowrap;
+                font-size: 0.83rem;
+                padding: 0.32rem 0.8rem;
+                border: 1px solid var(--border);
+                border-left-width: 1px;
+                border-radius: 999px;
+                background: var(--surface);
+            }
+            .nav-idx { display: none; }
+            .nav-name { overflow: visible; }
+            .nav-item.active { border-color: var(--accent); box-shadow: none; }
+            .detail { padding: 1.15rem 1.1rem 1.25rem; min-height: 0; }
+            .detail.is-overview { padding: 1.7rem 1.15rem 1.8rem; }
+            .d-title { font-size: 1.12rem; }
+            .ov-title { font-size: 1.45rem; }
+            #disc-modal .sheet { padding: 1.6rem 1.3rem 1.4rem; }
+            #disc-modal .sheet h2 { font-size: 1.15rem; margin-bottom: 1rem; }
+            .disc-body p { font-size: 0.86rem; line-height: 1.85; }
+            .disc-actions { margin-top: 1.4rem; gap: 0.45rem; }
+            .disc-actions .btn { flex: 1 1 auto; font-size: 0.8rem; padding: 0.45rem 0.7rem; }
+            .ov-stats { grid-template-columns: 1fr; gap: 0.55rem; }
         }
     </style>
 </head>
 <body>
+    <div id="disc-bg" class="disc-bg" aria-hidden="true"></div>
     <header>
         <div class="mark">&gt;</div>
         <div class="brand"><strong>SingBox<span class="accent">·</span>一键部署</strong></div>
-        <button id="info-btn" class="pill">使用说明</button>
         <a href="https://github.com/Uxnar/script" target="_blank" rel="noopener" class="pill">项目地址</a>
     </header>
 
     <main>
         <div class="wrap">
-            <section class="hero">
-                <span class="eyebrow">Sing-box · Shell</span>
-                <h1>一键安装脚本</h1>
-                <p>点击展开任一脚本，复制命令粘贴到服务器终端执行即可完成部署。所有脚本均支持 Alpine、Debian、Ubuntu 主流发行版。</p>
-            </section>
-            <div id="script-list"></div>
+            <div class="layout">
+                <aside class="side">
+                    <p class="side-label">脚本</p>
+                    <nav id="nav" class="nav no-scrollbar" aria-label="脚本列表"></nav>
+                </aside>
+                <section id="detail" class="detail" aria-live="polite"></section>
+            </div>
         </div>
     </main>
 
-    <div id="info-modal" class="modal" role="dialog" aria-modal="true" aria-label="使用说明">
+    <div id="disc-modal" class="modal" data-noclose="1" role="dialog" aria-modal="true" aria-label="免责声明">
         <div class="sheet">
-            <button class="close" aria-label="关闭">&times;</button>
-            <h2>使用说明</h2>
-            <p class="sub">硬件与系统要求</p>
-            <ul>
-                <li>运行内存大于等于 100M</li>
-                <li>存储空间大于等于 1G</li>
-                <li>使用 Alpine3.20+、Debian11+、Ubuntu18+ 系统</li>
-            </ul>
-            <p class="sub">注意事项</p>
-            <ul>
-                <li>请务必使用 <code>root</code> 用户执行安装命令。</li>
-                <li>执行前请确保服务器能正常访问互联网（含 GitHub）。</li>
-                <li>如遇权限问题，请在命令前加 <code>sudo</code> 或切换到特权用户。</li>
-                <li>GitHub 下载缓慢或失败时可用镜像：<code>SB_MIRROR=https://ghfast.top/ bash 脚本名.sh</code></li>
-            </ul>
+            <h2>免责声明</h2>
+            <div class="disc-body">
+                <p>本仓库的全部脚本、页面与文档内容均由 <strong>AI 生成</strong>，<strong>仅用于个人测试与自娱自乐，不具备任何实际作用与参考价值</strong>。</p>
+                <p>不保证正确性、安全性、稳定性与可用性；不构成任何技术建议、方案推荐或生产环境依据。所有代码请自行阅读、自行判断、自行测试后再决定是否使用。</p>
+                <p>因使用本仓库任何内容导致的直接或间接后果（包括但不限于服务器故障、数据丢失、服务中断、账号封禁、法律风险），全部由使用者自行承担，作者不承担任何责任。</p>
+                <p>如果你是抱着“找一个靠谱方案”的心态来到这里的，请立刻离开，去读 sing-box 官方文档。</p>
+            </div>
+            <div class="disc-actions">
+                <button class="btn" data-act="today" type="button">今天不再显示</button>
+                <button class="btn primary" data-act="ok" type="button">我知道了</button>
+            </div>
         </div>
     </div>
 
@@ -415,17 +596,22 @@
             {
                 name: "install-singbox-lite.sh",
                 title: "Sing-box 基础版",
+                short: "基础版",
                 desc: "适用于常规部署环境的最小安装版本。"
             },
             {
                 name: "install-singbox-SAN-v4v6.sh",
                 title: "Sing-box 双栈版（含 SAN）",
+                short: "双栈版",
+                tag: "推荐",
                 desc: "支持自动检测并创建 IPv4 / IPv6 双栈链路，检测到公网 IPv6 时会询问是否一并生成 v6 节点；仅提供 Hysteria2 与 VLESS Reality 两种协议。",
                 recommend: true
             },
             {
                 name: "install-singbox-SAN-v4v6-sni.sh",
                 title: "Sing-box 双栈版（SNI 自选）",
+                short: "双栈 · SNI",
+                tag: "推荐",
                 desc: "在双栈版基础上内置 20 个常用 SNI 候选池，VLESS Reality 与 Hysteria2 分开选择套用哪个域名；一路回车即用推荐项 swscan.apple.com。",
                 recommend: true,
                 badge: "🎯SNI自选",
@@ -444,6 +630,8 @@
             {
                 name: "install-singbox-auto.sh",
                 title: "Sing-box 自动版（无人值守）",
+                short: "自动版",
+                tag: "无人值守",
                 desc: "全程零输入部署：协议、端口、节点名均由命令行参数决定，检测到公网 IPv6 自动开启双栈，检测到旧版自动卸载重装。",
                 recommend: true,
                 badge: "🤖无人值守",
@@ -460,6 +648,8 @@
             {
                 name: "install-cftun.sh",
                 title: "Argo 临时隧道（增量）",
+                short: "Argo 隧道",
+                tag: "增量",
                 desc: "给已装好的 sing-box 追加一条 VLESS+WS 入站与 Cloudflare 临时隧道，原有 Reality / HY2 节点原封不动。需先部署任意一个 Sing-box 脚本。",
                 badge: "🧩增量",
                 note: {
@@ -477,7 +667,10 @@
             {
                 name: "zzj.sh",
                 title: "中转机脚本",
-                desc: "线路中转机专用，需配合已部署好的落地机一同使用。"
+                short: "中转机",
+                tag: "TCP+UDP",
+                desc: "realm 内核的中转面板，每条规则可选双栈 / 仅 TCP / 仅 UDP，VLESS 与 HY2 都能过。面板顶部显示版本与运行状态，支持强制更新脚本。",
+                badge: "🔀中转"
             }
         ];
 
@@ -488,14 +681,21 @@
             return cur.endsWith('/') ? cur : cur.substring(0, cur.lastIndexOf('/') + 1);
         })();
 
-        /* 每次生成命令都换一个随机参数，绕开 CDN 与浏览器对静态文件的长缓存。
-           链接本身就是版本载体，加了 ?v= 之后每次都能取到源站的最新文件。 */
+        /* 每次生成命令都换一个随机参数，绕开 CDN 与浏览器对静态文件的长缓存。 */
         const cacheToken = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
         const buildCommand = (item) =>
             `${prefixCmd} curl -k -sL -H 'Cache-Control: no-cache' ${baseUrl}${item.name}?v=${cacheToken()} -o /tmp/${item.name} && bash /tmp/${item.name}`;
 
-        const list = document.getElementById('script-list');
+        const nav = document.getElementById('nav');
+        const detail = document.getElementById('detail');
+
+        const el = (tag, cls, text) => {
+            const n = document.createElement(tag);
+            if (cls) n.className = cls;
+            if (text != null) n.textContent = text;
+            return n;
+        };
 
         function fallbackCopy(text) {
             const ta = document.createElement('textarea');
@@ -510,16 +710,14 @@
             return ok;
         }
 
-        /* note.lines 文本中用反引号包裹的片段会渲染成 <code> */
-        function fillLine(el, text) {
+        /* note.lines 里用反引号包裹的片段渲染成 <code> */
+        function fillLine(node, text) {
             text.split('`').forEach((part, i) => {
                 if (!part) return;
                 if (i % 2) {
-                    const c = document.createElement('code');
-                    c.textContent = part;
-                    el.appendChild(c);
+                    node.appendChild(el('code', null, part));
                 } else {
-                    el.appendChild(document.createTextNode(part));
+                    node.appendChild(document.createTextNode(part));
                 }
             });
         }
@@ -533,8 +731,7 @@
             noteTitle.textContent = note.title || '命令已复制';
             noteBody.textContent = '';
             (note.lines || []).forEach(text => {
-                const p = document.createElement('p');
-                p.className = 'nline';
+                const p = el('p', 'nline');
                 fillLine(p, text);
                 noteBody.appendChild(p);
             });
@@ -548,131 +745,248 @@
             noteModal.classList.add('open');
         }
 
-        scripts.forEach((item, i) => {
-            const displayCommand = buildCommand(item);
-
-            const card = document.createElement('article');
-            card.className = 'item' + (item.recommend ? ' featured' : '');
-
-            /* 复制按钮工厂：折叠行内与终端内各放一个，行为一致 */
-            const makeCopyBtn = (cls) => {
-                const b = document.createElement('button');
-                b.className = cls;
-                b.type = 'button';
-                b.textContent = '复制';
-                b.onclick = () => {
-                    const fullCommand = buildCommand(item);
-                    const done = () => {
-                        b.textContent = '已复制';
-                        b.classList.add('copied');
-                        setTimeout(() => {
-                            b.textContent = '复制';
-                            b.classList.remove('copied');
-                        }, 1800);
-                        if (item.note) showNote(item.note);
-                    };
-                    if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(fullCommand).then(done, () => {
-                            if (fallbackCopy(fullCommand)) done();
-                            else b.textContent = '请手动复制';
-                        });
-                    } else if (fallbackCopy(fullCommand)) {
-                        done();
-                    } else {
-                        b.textContent = '请手动复制';
-                    }
-                };
-                return b;
+        function doCopy(text, btn, note) {
+            const done = () => {
+                btn.textContent = '已复制';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '复制';
+                    btn.classList.remove('copied');
+                }, 1800);
+                if (note) showNote(note);
             };
-
-            /* --- 折叠头：三角 + 标题 + 红色标识 + 复制 --- */
-            const head = document.createElement('div');
-            head.className = 'row';
-
-            const toggle = document.createElement('button');
-            toggle.className = 'toggle';
-            toggle.type = 'button';
-            toggle.setAttribute('aria-expanded', 'false');
-
-            const caret = document.createElement('span');
-            caret.className = 'caret';
-
-            const h2 = document.createElement('span');
-            h2.className = 'row-title';
-            h2.textContent = item.title;
-
-            toggle.append(caret, h2);
-
-            if (item.recommend || item.badge) {
-                const rec = document.createElement('span');
-                rec.className = 'rec';
-                rec.textContent = item.badge || '\uD83D\uDD25 推荐';
-                toggle.append(rec);
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done, () => {
+                    if (fallbackCopy(text)) done();
+                    else btn.textContent = '请手动复制';
+                });
+            } else if (fallbackCopy(text)) {
+                done();
+            } else {
+                btn.textContent = '请手动复制';
             }
+        }
 
-            const rowCopy = makeCopyBtn('copy light row-copy');
-            head.append(toggle, rowCopy);
+        /* ---------- 概览页 ---------- */
+        function renderOverview() {
+            detail.textContent = '';
+            detail.classList.add('is-overview');
 
-            const desc = document.createElement('p');
-            desc.className = 'desc';
-            desc.textContent = item.desc;
+            const wrap = el('div', 'ov-wrap');
 
-            const term = document.createElement('div');
-            term.className = 'term';
+            const head = el('div', 'd-head');
+            head.appendChild(el('h1', 'd-title ov-title', 'SingBox 一键部署'));
+            head.appendChild(el('span', 'ov-tag', '项目说明'));
+            wrap.appendChild(head);
 
-            const bar = document.createElement('div');
-            bar.className = 'term-bar';
-            const dots = document.createElement('div');
-            dots.className = 'dots';
-            dots.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
-            const label = document.createElement('span');
-            label.className = 'term-label';
-            label.textContent = 'root@server ~';
-            const btn = makeCopyBtn('copy');
-            bar.append(dots, label, btn);
+            wrap.appendChild(el('p', 'ov-lead',
+                '面向 VPS 的 sing-box 部署脚本集合：装内核、写配置、签证书、生成订阅链接，交互式与无人值守两种模式。默认只保留 Hysteria2 与 VLESS Reality 两种协议。'));
 
-            const cmd = document.createElement('div');
-            cmd.className = 'cmd no-scrollbar';
-            cmd.textContent = displayCommand;
+            const stats = el('div', 'ov-stats');
+            [
+                ['协议', 'Hysteria2 · VLESS Reality'],
+                ['系统', 'Alpine 3.20+ · Debian 11+ · Ubuntu 18+'],
+                ['资源', '内存 ≥100M · 磁盘 ≥1G']
+            ].forEach(([k, v]) => {
+                const box = el('div', 'ov-stat');
+                box.append(el('div', 'ov-k', k), el('div', 'ov-v', v));
+                stats.appendChild(box);
+            });
+            wrap.appendChild(stats);
+
+            wrap.appendChild(el('p', 'ov-h', '流程'));
+            wrap.appendChild(el('p', 'ov-note',
+                '左侧选择脚本 → 复制命令 → 以 root 粘贴到服务器终端 → 按提示选择协议、端口与 SNI'));
+
+            wrap.appendChild(el('p', 'ov-h', '注意'));
+            [
+                '必须使用 root 执行安装命令',
+                '服务器需能正常访问 GitHub',
+                'GitHub 下载慢时可用镜像 `SB_MIRROR=https://ghfast.top/`'
+            ].forEach(txt => {
+                const p = el('p', 'ov-note');
+                fillLine(p, txt);
+                wrap.appendChild(p);
+            });
+
+            const footBtn = el('button', 'btn ov-foot', '免责声明');
+            footBtn.type = 'button';
+            footBtn.onclick = () => {
+                const m = document.getElementById('disc-modal');
+                const bg = document.getElementById('disc-bg');
+                if (bg) bg.classList.remove('on');
+                if (m) m.classList.add('open');
+            };
+            wrap.appendChild(footBtn);
+
+            detail.appendChild(wrap);
+            document.title = 'SingBox 一键部署';
+            syncNav(-1);
+        }
+
+        function syncNav(index) {
+            [...nav.children].forEach(node => {
+                const on = Number(node.dataset.idx) === index;
+                node.classList.toggle('active', on);
+                node.setAttribute('aria-current', on ? 'true' : 'false');
+            });
+        }
+
+        function select(index) {
+            if (index < 0) {
+                renderOverview();
+                history.replaceState(null, '', location.pathname + location.search);
+            } else {
+                renderDetail(index);
+                history.replaceState(null, '', '#' + scripts[index].name);
+            }
+        }
+
+        /* 右侧详情 */
+        function renderDetail(index) {
+            const item = scripts[index];
+            detail.textContent = '';
+            detail.classList.remove('is-overview');
+
+            const head = el('div', 'd-head');
+            head.appendChild(el('h1', 'd-title', item.title));
+            if (item.recommend || item.badge) {
+                head.appendChild(el('span', 'rec', item.badge || '\uD83D\uDD25 推荐'));
+            }
+            detail.appendChild(head);
+
+            detail.appendChild(el('p', 'd-desc', item.desc));
+            detail.appendChild(el('span', 'filechip', item.name));
+
+            const term = el('div', 'term');
+            const bar = el('div', 'term-bar');
+            const dots = el('div', 'dots');
+            dots.append(el('i'), el('i'), el('i'));
+            bar.append(dots, el('span', 'term-label', 'root@server ~'));
+
+            const btn = el('button', 'copy', '复制');
+            btn.type = 'button';
+            btn.onclick = () => doCopy(buildCommand(item), btn, item.note);
+            bar.appendChild(btn);
+
+            const cmd = el('div', 'cmd no-scrollbar', buildCommand(item));
 
             term.append(bar, cmd);
+            detail.appendChild(term);
 
-            /* --- 展开区：文件名、说明、命令 --- */
-            const chip = document.createElement('span');
-            chip.className = 'filechip';
-            chip.textContent = item.name;
+            syncNav(index);
 
-            const body = document.createElement('div');
-            body.className = 'panel-body';
-            body.append(chip, desc, term);
+            document.title = `${item.title} · SingBox 一键部署`;
+        }
 
+        /* 左侧目录：概览 + 脚本 */
+        const mkNav = (idx, name, tag) => {
+            const b = el('button', 'nav-item');
+            b.type = 'button';
+            b.dataset.idx = String(idx);
+            b.appendChild(el('span', 'nav-idx', idx < 0 ? '\u00B7' : String(idx + 1).padStart(2, '0')));
+            b.appendChild(el('span', 'nav-name', name));
+            if (tag) {
+                b.appendChild(el('span', 'nav-tag' + (tag === '推荐' ? ' hot' : ''), tag));
+            }
+            b.onclick = () => select(idx);
+            nav.appendChild(b);
+        };
+
+        mkNav(-1, '项目说明');
+        scripts.forEach((s, i) => mkNav(i, s.short || s.title, s.tag));
+
+        const hashIdx = scripts.findIndex(s => '#' + s.name === location.hash);
+        if (location.hash && hashIdx >= 0) {
+            renderDetail(hashIdx);
+        } else {
+            renderOverview();
+        }
+
+        /* ---------- 免责声明 ---------- */
+        const discModal = document.getElementById('disc-modal');
+        const discBg = document.getElementById('disc-bg');
+        const DISC_FOREVER = 'sb_disc_forever';
+        const DISC_DAY = 'sb_disc_day';
+
+        /* 关闭弹窗后铺满全屏的循环水印:行数与重复次数按视口自适应 */
+        const DISC_LINES = [
+            'AI 生成 · 仅供自娱自乐 · 不具备任何实际作用与参考价值',
+            '不保证正确性 / 安全性 / 稳定性 / 可用性 · 后果自负',
+            '作者不承担任何责任 · 请自行判断后使用',
+            '这不是生产环境方案 · 请查阅官方文档'
+        ];
+        const DISC_SEP = '\u3000·\u3000';
+
+        function buildDiscBg() {
             const inner = document.createElement('div');
-            inner.className = 'panel-inner';
-            inner.append(body);
+            inner.className = 'disc-bg-inner';
 
-            const panel = document.createElement('div');
-            panel.className = 'panel';
-            panel.append(inner);
+            // 先量一份文本的宽度,再决定每行重复几次
+            const probe = document.createElement('div');
+            probe.className = 'disc-bg-line';
+            probe.style.position = 'absolute';
+            probe.style.visibility = 'hidden';
+            probe.textContent = DISC_LINES[0] + DISC_SEP;
+            inner.appendChild(probe);
+            discBg.textContent = '';
+            discBg.appendChild(inner);
+            const unitW = probe.offsetWidth || 720;
 
-            toggle.onclick = () => {
-                const open = !card.classList.contains('open');
-                list.querySelectorAll('.item.open').forEach(el => {
-                    if (el === card) return;
-                    el.classList.remove('open');
-                    el.querySelector('.toggle').setAttribute('aria-expanded', 'false');
-                });
-                card.classList.toggle('open', open);
-                toggle.setAttribute('aria-expanded', String(open));
-            };
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            // 半份循环长度必须盖过整屏,再加一份余量
+            const repeat = Math.max(3, Math.ceil((vw * 2) / unitW) + 1);
+            // 行高约等于字号 1.65 倍,取 42px 保守估算,额外多铺 4 行
+            const rows = Math.max(10, Math.ceil(vh / 42) + 4);
 
-            card.append(head, panel);
-            list.appendChild(card);
+            inner.textContent = '';
+            for (let i = 0; i < rows; i++) {
+                const line = document.createElement('div');
+                line.className = 'disc-bg-line';
+                line.textContent = (DISC_LINES[i % DISC_LINES.length] + DISC_SEP).repeat(repeat);
+                line.style.animationDuration = (100 + (i % 5) * 18) + 's';
+                line.style.animationDelay = '-' + (i * 13 + 7) + 's';
+                inner.appendChild(line);
+            }
+        }
+
+        buildDiscBg();
+
+        let discResizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(discResizeTimer);
+            discResizeTimer = setTimeout(buildDiscBg, 300);
         });
 
-        const modal = document.getElementById('info-modal');
-        document.getElementById('info-btn').onclick = () => modal.classList.add('open');
+        function discSuppressed() {
+            try {
+                if (localStorage.getItem(DISC_FOREVER) === '1') return true;
+                if (localStorage.getItem(DISC_DAY) === new Date().toDateString()) return true;
+            } catch (e) { /* 无痕模式忽略存储异常 */ }
+            return false;
+        }
+
+        discModal.querySelectorAll('.btn').forEach(b => {
+            b.onclick = () => {
+                try {
+                    if (b.dataset.act === 'forever') localStorage.setItem(DISC_FOREVER, '1');
+                    if (b.dataset.act === 'today') localStorage.setItem(DISC_DAY, new Date().toDateString());
+                } catch (e) { /* 忽略 */ }
+                discModal.classList.remove('open');
+                discBg.classList.add('on');
+            };
+        });
+
+        // 弹窗被抑制时直接铺水印,否则等弹窗关闭后再铺
+        if (discSuppressed()) {
+            discBg.classList.add('on');
+        } else {
+            discModal.classList.add('open');
+        }
 
         document.querySelectorAll('.modal').forEach(m => {
+            if (m.dataset.noclose === '1') return;
             const close = () => m.classList.remove('open');
             m.querySelector('.close').onclick = close;
             m.addEventListener('click', (e) => { if (e.target === m) close(); });

@@ -1,5 +1,15 @@
 # SingBox · 一键部署
 
+> **免责声明**
+>
+> 本仓库的全部脚本、页面与文档内容均由 AI 生成，**仅用于个人测试与自娱自乐，不具备任何实际作用与参考价值**。
+>
+> 不保证正确性、安全性、稳定性与可用性；不构成任何技术建议、方案推荐或生产环境依据。所有代码请自行阅读、自行判断、自行测试后再决定是否使用。
+>
+> 因使用本仓库任何内容导致的直接或间接后果（包括但不限于服务器故障、数据丢失、服务中断、账号封禁、法律风险），全部由使用者自行承担，作者不承担任何责任。
+>
+> 如果你是抱着"找一个靠谱方案"的心态来到这里的，请立刻离开，去读 sing-box 官方文档。
+
 一套用于快速部署 sing-box 节点的 Shell 脚本集合，纯命令行交互，装完即用。
 
 - 在线页面（含一键复制命令）：<https://uxnar.github.io/script/>
@@ -12,9 +22,10 @@
 | `install-singbox-lite.sh` | 基础版，适合常规环境 | SS / HY2 / TUIC / VLESS Reality |
 | `install-singbox-lite-SAN.sh` | 在基础版之上为自签证书补上 SAN 字段 | 同上 |
 | `install-singbox-SAN-v4v6.sh` | 推荐。含 SAN，支持 IPv4 / IPv6 双栈，已隐藏 SS 与 TUIC | HY2 / VLESS Reality |
+| `install-singbox-SAN-v4v6-sni.sh` | 双栈版 + 20 个 SNI 候选池，VLESS 与 HY2 分开选，回车即用推荐项 `swscan.apple.com` | 同上 |
 | `install-singbox-auto.sh` | 半无人值守版。端口走命令行参数，全程零输入，适合批量部署 | 同上 |
 | `install-cftun.sh` | 增量版。给已装好的 sing-box 追加 Argo 临时隧道，不重装、不动原有节点 | VLESS + WS / Cloudflare Tunnel |
-| `zzj.sh` | 中转机脚本（基于 Realm 做端口转发） | 端口转发 |
+| `zzj.sh` | 中转机脚本（基于 Realm，同一端口同时转发 TCP 与 UDP） | VLESS / HY2 中转 |
 
 > SAN = 证书的主题备用名称（Subject Alternative Name）。现在的 TLS 客户端已不再认 CN，缺 SAN 的证书会被判定为不合法，HY2 需要它。
 
@@ -163,9 +174,19 @@ bash /tmp/install.sh --uninstall
 
 ## 中转机（zzj.sh）
 
-基于 Realm 的端口转发管理，装完输入 `zzj` 打开菜单：添加转发规则（本机监听端口 → 落地机 vless 地址）、查看规则、删除规则、清空、卸载。配置文件是 `/etc/realm/config.toml`。
+基于 Realm 的端口转发管理，装完输入 `zzj` 打开菜单：添加转发规则（本机监听端口 → 落地机 `vless://` 或 `hy2://` 地址）、查看规则、删除规则、清空、更新脚本、卸载。配置文件是 `/etc/realm/config.toml`。
+
+`[network]` 段默认开启 `use_udp`，同一监听端口同时转发 TCP 与 UDP，所以 VLESS（TCP）和 HY2（UDP）可以走同一条规则。
+
+添加规则时会询问传输类型：`1` 双栈（默认）/ `2` 仅 TCP / `3` 仅 UDP。选单协议时脚本为该条 endpoint 写入 `[endpoints.network]` 覆盖全局配置，不影响其它规则。
+
+端口占用按 TCP / UDP 分开校验：同一端口已有「仅 TCP」规则时，仍可再添加「仅 UDP」规则；只有当目标协议的端口已被占用才拒绝，并提示改用哪种类型。
+
+若 realm 二进制不带 udp feature 导致启动失败，会先关闭全局 UDP，再尝试移除 endpoint 级覆盖，逐级回退并提示。
 
 > 旧版的快捷指令注册指向了一个失效地址，`/usr/local/bin/zzj` 可能残留成空文件，导致输入 `zzj` 没反应。现在改为优先自复制、兜底从本仓库拉取，空文件会自动重建——重跑一次脚本即可修好。
+>
+> 面板顶部显示脚本版本号与 `realm: 运行中 · UDP 开` 状态；菜单 5 为强制更新，从仓库拉取最新脚本覆盖自身并重启面板。
 
 ## 协议与端口
 
